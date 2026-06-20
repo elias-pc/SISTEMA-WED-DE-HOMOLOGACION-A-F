@@ -1,0 +1,15 @@
+<svg width="520" height="180" viewBox="0 0 520 180" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .red { fill: #d51b1f; }
+      .gray { fill: #7d7d7d; }
+      .text { font-family: 'Inter', sans-serif; font-size: 18px; fill: #4b5563; }
+      .logo-letter { font-family: 'Georgia', serif; font-weight: bold; }
+    </style>
+  </defs>
+  <text x="120" y="100" class="logo-letter red" font-size="90" text-anchor="middle">A</text>
+  <text x="260" y="100" class="logo-letter gray" font-size="90" text-anchor="middle">&amp;</text>
+  <text x="400" y="100" class="logo-letter red" font-size="90" text-anchor="middle">F</text>
+  <text x="260" y="140" class="text" text-anchor="middle">HOMOLOGACIÓN DE</text>
+  <text x="260" y="165" class="text" text-anchor="middle">CLIENTES Y PROVEEDORES</text>
+</svg>

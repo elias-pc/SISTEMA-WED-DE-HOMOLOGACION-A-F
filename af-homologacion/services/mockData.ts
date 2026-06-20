@@ -1,0 +1,93 @@
+import { DashboardMetric, Proveedor } from '../types';
+
+export const dashboardMetrics: DashboardMetric[] = [
+  { label: 'Total proveedores', value: '1,248' },
+  { label: 'Homologados', value: '842' },
+  { label: 'En proceso', value: '276' },
+  { label: 'Observados', value: '54' },
+  { label: 'Certificados por vencer', value: '31' },
+];
+
+export const lineaHomologaciones = [
+  { label: 'Ene', value: 45 },
+  { label: 'Feb', value: 62 },
+  { label: 'Mar', value: 78 },
+  { label: 'Abr', value: 95 },
+  { label: 'May', value: 112 },
+  { label: 'Jun', value: 125 },
+  { label: 'Jul', value: 138 },
+];
+
+export const donutEstados = [
+  { label: 'Homologados', value: 842, color: '#dcfce7' },
+  { label: 'En proceso', value: 276, color: '#fef3c7' },
+  { label: 'Observados', value: 54, color: '#fee2e2' },
+  { label: 'Vencidos', value: 31, color: '#fbcfe8' },
+];
+
+export const proveedoresMock: Proveedor[] = [
+  {
+    id: 'p-001',
+    razonSocial: 'Soluciones A&F SAC',
+    ruc: '20501234567',
+    personaContacto: 'Mary Timoteo Mallma',
+    telefonos: '502-5438 anexo 104,9',
+    email: 'contabilidad@3nexsac.com',
+    direccion: 'Av. Morales Duarez Nro. 1508',
+    departamento: 'CALLAO',
+    distrito: 'Carmen de La Legua',
+    actividadPrincipal: 'Otras Actividades De Apoyo A',
+    estado: 'Homologado',
+    calificacion: 4.8,
+    fechaRegistro: '12 mar 2025',
+    vigencia: '12 mar 2026',
+  },
+  {
+    id: 'p-002',
+    razonSocial: '3A Ingenieria y Servicios Generales E.I.R.L',
+    ruc: '20610564551',
+    personaContacto: 'Mily Lopez Leon',
+    telefonos: '932109562',
+    email: 'info@3aingenieria.com',
+    direccion: 'Calle San Antonio Este 619',
+    departamento: 'LIMA',
+    distrito: 'Rimac',
+    actividadPrincipal: 'Venta al por mayor',
+    estado: 'En proceso',
+    calificacion: 3.9,
+    fechaRegistro: '04 feb 2025',
+    vigencia: 'N/A',
+  },
+  {
+    id: 'p-003',
+    razonSocial: '5 Jotas E.I.R.L.',
+    ruc: '20538469719',
+    personaContacto: 'Giovanna Saravia',
+    telefonos: '951511175',
+    email: 'juribe@abtechnologysa.com',
+    direccion: 'Av. Circunvalación Mza. J Lote',
+    departamento: 'LIMA',
+    distrito: 'Lurigancho',
+    actividadPrincipal: 'Transporte de carga por carretera',
+    estado: 'Observado',
+    calificacion: 3.2,
+    fechaRegistro: '01 ene 2025',
+    vigencia: 'N/A',
+  },
+  {
+    id: 'p-004',
+    razonSocial: 'AB Technology SAC',
+    ruc: '20506491216',
+    personaContacto: 'Joyce Uribe',
+    telefonos: '988855115',
+    email: 'ing.julioningle@gmail.com',
+    direccion: 'Calle Marcela Castro Nro. 634',
+    departamento: 'LIMA',
+    distrito: 'San Luis',
+    actividadPrincipal: 'Instalaciones eléctricas',
+    estado: 'Vencido',
+    calificacion: 2.7,
+    fechaRegistro: '20 dic 2024',
+    vigencia: '20 dic 2025',
+  },
+];
