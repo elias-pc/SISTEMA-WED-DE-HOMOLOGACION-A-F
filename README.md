@@ -43,3 +43,11 @@ npm run dev
 - Añadir datos mock y servicios.
 - Crear componentes reutilizables para tablas, cards y gráficos.
 - Añadir autenticación real y rutas protegidas.
+
+## Despliegue en Vercel
+
+1. Crea un nuevo proyecto en Vercel y conecta el repositorio.
+2. Configura el framework como `Vite`.
+3. Usa el comando de build: `npm run build`.
+4. Usa el directorio de salida: `dist`.
+5. El archivo `vercel.json` ya incluye la regla SPA para que todas las rutas se redirijan a `index.html`.
