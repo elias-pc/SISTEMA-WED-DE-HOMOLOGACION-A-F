@@ -8,6 +8,16 @@ Construir un prototipo funcional para administrar procesos de homologación de p
 
 ### Funcionalidades implementadas
 
+#### Presentación corporativa pública
+
+- Portada moderna basada en el contenido institucional publicado en `https://ayf.pe/`.
+- Conserva la identidad visual en rojo `#E21B22`, blanco, gris claro y carbón.
+- Secciones: presentación, Nosotros, Visión, Servicios y Contacto.
+- Servicios incluidos: Homologación de Empresas, Sistemas de Gestión, Desarrollo de Planes de Negocio y Bolsa de Proveedores.
+- Utiliza las imágenes institucionales oficiales de A&F.
+- El botón **Acceso clientes** conecta la presentación pública con el sistema privado.
+- La presentación está disponible en `/` y el panel autenticado en `/panel`.
+
 #### Autenticación y roles
 
 - Inicio de sesión con correo y contraseña.

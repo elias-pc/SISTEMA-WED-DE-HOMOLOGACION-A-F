@@ -10,13 +10,15 @@ import ConfiguracionPage from '../app/configuracion/ConfiguracionPage';
 import ProfilePage from '../app/profile/ProfilePage';
 import UnauthorizedPage from '../app/unauthorized/UnauthorizedPage';
 import ProtectedRoute from './auth/ProtectedRoute';
+import LandingPage from '../app/landing/LandingPage';
 
 function App() {
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<MainLayout />}>
+        <Route path="/panel" element={<MainLayout />}>
           <Route index element={<DashboardPage />} />
           <Route path="proveedores" element={<ProveedoresPage />} />
           <Route path="reportes" element={<ReportesPage />} />

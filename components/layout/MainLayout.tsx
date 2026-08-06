@@ -4,9 +4,9 @@ import { useTenant } from '../../src/tenant/TenantContext';
 import { roleLabels, routeRoles } from '../../services/auth';
 
 const menuItems = [
-  { label: 'Dashboard', path: '/' }, { label: 'Proveedores', path: '/proveedores' },
-  { label: 'Homologaciones', path: '/homologaciones' }, { label: 'Empresas homologadas', path: '/homologadas' },
-  { label: 'Reportes', path: '/reportes' }, { label: 'Empresas y procesos', path: '/configuracion' }, { label: 'Perfil', path: '/profile' },
+  { label: 'Dashboard', path: '/panel' }, { label: 'Proveedores', path: '/panel/proveedores' },
+  { label: 'Homologaciones', path: '/panel/homologaciones' }, { label: 'Empresas homologadas', path: '/panel/homologadas' },
+  { label: 'Reportes', path: '/panel/reportes' }, { label: 'Empresas y procesos', path: '/panel/configuracion' }, { label: 'Perfil', path: '/panel/profile' },
 ];
 
 function MainLayout() {
@@ -14,7 +14,7 @@ function MainLayout() {
   const { empresasDisponibles, procesos, selectedEmpresa, selectedProceso, selectEmpresa, selectProceso } = useTenant();
   const navigate = useNavigate();
   if (!user) return null;
-  const visibleMenuItems = menuItems.filter((item) => routeRoles[item.path].includes(user.role));
+  const visibleMenuItems = menuItems.filter((item) => routeRoles[item.path.replace('/panel', '') || '/'].includes(user.role));
   const procesosEmpresa = procesos.filter((item) => item.empresaId === selectedEmpresa?.id);
 
   const handleLogout = () => { logout(); navigate('/login', { replace: true }); };
@@ -24,7 +24,7 @@ function MainLayout() {
       <aside className="sidebar">
         <div className="sidebar-brand"><img src="/logo.svg" alt="A&F Homologación" /><p>Plataforma de homologación</p></div>
         <nav className="sidebar-nav" aria-label="Navegación principal">
-          {visibleMenuItems.map((item) => <NavLink key={item.path} to={item.path} end={item.path === '/'} className={({ isActive }) => isActive ? 'active' : ''}>{item.label}</NavLink>)}
+          {visibleMenuItems.map((item) => <NavLink key={item.path} to={item.path} end={item.path === '/panel'} className={({ isActive }) => isActive ? 'active' : ''}>{item.label}</NavLink>)}
         </nav>
       </aside>
       <main className="app-content">

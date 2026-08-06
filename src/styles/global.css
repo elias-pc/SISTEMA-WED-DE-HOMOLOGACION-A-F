@@ -207,3 +207,83 @@ main { padding-top: 0.75rem; }
   .provider-form { grid-template-columns: 1fr; }
   .tenant-bar { flex-direction: column; }
 }
+
+/* Presentación corporativa pública */
+.corporate-site { --corp-red: #e21b22; --corp-dark: #17191e; --corp-cream: #f7f4f2; min-height: 100vh; overflow: hidden; background: #fff; color: #202228; }
+.corporate-wrap { width: min(1180px, calc(100% - 3rem)); margin-inline: auto; }
+.corporate-header { position: fixed; inset: 0 0 auto; z-index: 100; height: 82px; display: flex; align-items: center; gap: 2rem; padding: 0 max(1.5rem, calc((100vw - 1180px) / 2)); border-bottom: 1px solid rgba(17,24,39,.08); background: rgba(255,255,255,.94); backdrop-filter: blur(18px); }
+.corporate-logo { margin-right: auto; }
+.corporate-logo img { display: block; width: 150px; max-height: 62px; object-fit: contain; }
+.corporate-header nav { display: flex; gap: 1.75rem; font-size: .88rem; font-weight: 600; }
+.corporate-header nav a:hover { color: var(--corp-red); }
+.corporate-login, .corporate-primary, .corporate-secondary { display: inline-flex; align-items: center; justify-content: center; padding: .85rem 1.2rem; border-radius: .35rem; font-weight: 700; transition: transform .2s ease, background .2s ease; }
+.corporate-login, .corporate-primary { background: var(--corp-red); color: #fff; }
+.corporate-login:hover, .corporate-primary:hover, .corporate-secondary:hover { transform: translateY(-2px); }
+.corporate-hero { position: relative; min-height: 760px; display: flex; align-items: center; padding-top: 82px; background: url('https://ayf.pe/wp-content/uploads/2020/07/Banner-principal-1.webp') 68% center/cover no-repeat; color: #fff; }
+.hero-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(17,19,24,.94) 0%, rgba(17,19,24,.72) 46%, rgba(17,19,24,.12) 78%); }
+.hero-content { position: relative; padding-block: 7rem; }
+.hero-content h1 { max-width: 800px; margin: .75rem 0 1.25rem; font-size: clamp(2.8rem, 6vw, 5.4rem); line-height: .98; letter-spacing: -.055em; }
+.hero-content > p:not(.eyebrow) { max-width: 620px; color: rgba(255,255,255,.78); font-size: 1.15rem; }
+.eyebrow { margin: 0 0 .65rem; color: var(--corp-red); font-size: .78rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.eyebrow.light { color: #fff; opacity: .76; }
+.hero-actions { display: flex; gap: .8rem; margin-top: 2rem; }
+.corporate-secondary { border: 1px solid rgba(255,255,255,.55); color: #fff; }
+.corporate-section { padding-block: 7rem; }
+.corporate-section#nosotros { display: grid; grid-template-columns: 1.05fr .95fr; align-items: center; gap: 5rem; }
+.corporate-section h2, .vision-section h2, .contact-section h2 { margin: 0 0 1.25rem; font-size: clamp(2rem, 4vw, 3.5rem); line-height: 1.08; letter-spacing: -.04em; }
+.corporate-copy > p:not(.eyebrow), .vision-section p, .contact-section > p { color: #60636b; line-height: 1.85; }
+.corporate-copy blockquote { margin: 2rem 0 0; padding: 1.5rem 0 1.5rem 1.5rem; border-left: 4px solid var(--corp-red); color: #36383d; font-size: 1.05rem; font-weight: 600; line-height: 1.7; }
+.corporate-image { position: relative; }
+.corporate-image::before { content: ''; position: absolute; inset: 2rem -2rem -2rem 2rem; background: rgba(226,27,34,.1); }
+.corporate-image img { position: relative; width: 100%; min-height: 520px; object-fit: cover; }
+.vision-section { padding-block: 6rem; background: var(--corp-red); color: #fff; }
+.vision-grid { display: grid; grid-template-columns: 1.4fr .6fr; align-items: center; gap: 6rem; }
+.vision-section p:not(.eyebrow) { color: rgba(255,255,255,.82); font-size: 1.05rem; line-height: 1.8; }
+.experience-card { display: grid; padding-left: 3rem; border-left: 1px solid rgba(255,255,255,.4); }
+.experience-card strong { font-size: 5rem; line-height: 1; }
+.experience-card span { max-width: 220px; margin-top: .8rem; color: rgba(255,255,255,.8); }
+.services-section { width: 100%; background: var(--corp-cream); }
+.section-title-row { display: flex; justify-content: space-between; align-items: end; gap: 2rem; margin-bottom: 3rem; }
+.section-title-row h2 { max-width: 720px; margin: 0; }
+.section-title-row p { max-width: 300px; color: #6d7077; }
+.services-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; }
+.service-card { min-height: 520px; display: flex; flex-direction: column; overflow: hidden; border-radius: .5rem; background: #fff; box-shadow: 0 16px 50px rgba(24,28,36,.08); }
+.service-card img { width: 100%; height: 245px; object-fit: cover; filter: saturate(.75); }
+.service-card div { position: relative; flex: 1; padding: 2rem; }
+.service-card span { position: absolute; right: 2rem; top: 1.5rem; color: rgba(226,27,34,.18); font-size: 3rem; font-weight: 800; }
+.service-card h3 { position: relative; margin: 0 0 1rem; padding-right: 4rem; font-size: 1.35rem; }
+.service-card p { margin: 0; color: #676a72; line-height: 1.75; }
+.contact-section { padding-block: 7rem; background: var(--corp-dark); color: #fff; }
+.contact-grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: 6rem; }
+.contact-grid > div > p:not(.eyebrow) { color: rgba(255,255,255,.65); line-height: 1.7; }
+.contact-data { display: flex; gap: 3rem; margin-top: 2.5rem; }
+.contact-data p { display: grid; gap: .35rem; }
+.contact-data strong { margin-bottom: .5rem; color: #fff; }
+.contact-data a { color: rgba(255,255,255,.72); }
+.contact-card { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 2rem; border-radius: .5rem; background: #fff; color: #222; }
+.contact-card label { display: grid; gap: .4rem; color: #555; font-size: .82rem; font-weight: 600; }
+.contact-card label:nth-of-type(5) { grid-column: 1 / -1; }
+.contact-card input, .contact-card textarea { width: 100%; padding: .85rem; border: 1px solid #ddd; border-radius: .25rem; resize: vertical; }
+.contact-card .corporate-primary { justify-self: start; }
+.corporate-footer { padding-block: 2rem; background: #0d0f12; color: rgba(255,255,255,.6); }
+.corporate-footer .corporate-wrap { display: flex; align-items: center; gap: 2rem; }
+.corporate-footer img { width: 100px; filter: brightness(0) invert(1); }
+.corporate-footer p { margin-right: auto; }
+.corporate-footer a { color: #fff; font-weight: 600; }
+
+@media (max-width: 850px) {
+  .corporate-header { height: 70px; }
+  .corporate-header nav { display: none; }
+  .corporate-logo img { width: 120px; }
+  .corporate-login { padding: .7rem .85rem; font-size: .8rem; }
+  .corporate-hero { min-height: 680px; padding-top: 70px; background-position: 72% center; }
+  .hero-content h1 { font-size: clamp(2.5rem, 11vw, 4rem); }
+  .corporate-section#nosotros, .vision-grid, .contact-grid { grid-template-columns: 1fr; gap: 3rem; }
+  .corporate-image img { min-height: 360px; }
+  .experience-card { padding: 2rem 0 0; border-left: 0; border-top: 1px solid rgba(255,255,255,.4); }
+  .section-title-row { display: block; }
+  .services-grid { grid-template-columns: 1fr; }
+  .contact-card { grid-template-columns: 1fr; }
+  .contact-card label:nth-of-type(5) { grid-column: auto; }
+  .corporate-footer .corporate-wrap { align-items: flex-start; flex-direction: column; gap: .5rem; }
+}

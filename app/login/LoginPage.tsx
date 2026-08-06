@@ -12,7 +12,7 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to="/panel" replace />;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -22,7 +22,7 @@ function LoginPage() {
       return;
     }
     const requestedPath = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
-    navigate(requestedPath || '/', { replace: true });
+    navigate(requestedPath || '/panel', { replace: true });
   };
 
   const useDemoAccount = (demoEmail: string, demoPassword: string) => {
