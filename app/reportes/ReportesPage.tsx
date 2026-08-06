@@ -1,15 +1,51 @@
+import { useProveedores } from '../../src/providers/ProveedoresContext';
+import { useTenant } from '../../src/tenant/TenantContext';
+
+const reportes = [
+  { id: 'general', title: 'Directorio de proveedores', description: 'Datos generales y estado actual de todos los proveedores.' },
+  { id: 'homologados', title: 'Proveedores homologados', description: 'Relación de proveedores con homologación vigente.' },
+  { id: 'proceso', title: 'Homologaciones en proceso', description: 'Solicitudes que todavía requieren seguimiento.' },
+  { id: 'vencidos', title: 'Certificados vencidos', description: 'Proveedores cuyos certificados deben renovarse.' },
+];
+
+function escapeCsv(value: string | number) {
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
 function ReportesPage() {
+  const { proveedores } = useProveedores();
+  const { selectedEmpresa, selectedProceso } = useTenant();
+
+  const downloadReport = (reportId: string, title: string) => {
+    const filtered = proveedores.filter((item) => {
+      if (reportId === 'homologados') return item.estado === 'Homologado';
+      if (reportId === 'proceso') return item.estado === 'En proceso';
+      if (reportId === 'vencidos') return item.estado === 'Vencido';
+      return true;
+    });
+    const headers = ['RUC', 'Razón social', 'Contacto', 'Correo', 'Distrito', 'Actividad principal', 'Estado'];
+    const rows = filtered.map((item) => [item.ruc, item.razonSocial, item.personaContacto, item.email, item.distrito, item.actividadPrincipal, item.estado]);
+    const csv = `\uFEFF${[headers, ...rows].map((row) => row.map(escapeCsv).join(';')).join('\n')}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${title.toLowerCase().replace(/ /g, '-')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="container">
       <section className="card">
-        <h2 className="page-title">Reportes</h2>
-        <p className="secondary-text">Indicadores clave para la toma de decisiones y seguimiento de homologaciones.</p>
-        <div style={{ display: 'grid', gap: '1rem', marginTop: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-          {['Homologaciones mensuales', 'Proveedores por estado', 'Indicadores por cliente', 'Certificados próximos a vencer'].map((item) => (
-            <div key={item} className="card" style={{ padding: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{item}</h3>
-              <p className="secondary-text" style={{ marginTop: '0.75rem' }}>Vista de datos ejecutivos para análisis rápido.</p>
-            </div>
+        <h2 className="page-title">Reportes descargables</h2>
+        <p className="context-label">{selectedEmpresa?.razonSocial} · {selectedProceso?.codigo}</p>
+        <p className="secondary-text">Consulta y descarga la información actual de proveedores en formato CSV, compatible con Excel.</p>
+        <div className="report-grid">
+          {reportes.map((reporte) => (
+            <article key={reporte.id} className="report-card">
+              <div><h3>{reporte.title}</h3><p>{reporte.description}</p></div>
+              <button type="button" className="btn-primary" onClick={() => downloadReport(reporte.id, reporte.title)}>Descargar reporte</button>
+            </article>
           ))}
         </div>
       </section>

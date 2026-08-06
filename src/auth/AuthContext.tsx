@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import type { AuthUser } from '../../types';
-import { authenticate } from '../../services/auth';
+import { authenticate, getAuthUsers } from '../../services/auth';
 
 const STORAGE_KEY = 'af-auth-user-v1';
 
@@ -15,7 +15,12 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function readStoredUser(): AuthUser | null {
   try {
     const stored = sessionStorage.getItem(STORAGE_KEY);
-    return stored ? (JSON.parse(stored) as AuthUser) : null;
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as AuthUser;
+    const currentUser = getAuthUsers().find((item) => item.email === parsed.email);
+    if (!currentUser) return null;
+    const { password: _password, ...user } = currentUser;
+    return user;
   } catch {
     sessionStorage.removeItem(STORAGE_KEY);
     return null;

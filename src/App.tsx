@@ -18,13 +18,11 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<MainLayout />}>
           <Route index element={<DashboardPage />} />
-          <Route element={<ProtectedRoute allowedRoles={['ejecutiva', 'supervisor']} />}>
-            <Route path="proveedores" element={<ProveedoresPage />} />
-            <Route path="reportes" element={<ReportesPage />} />
-          </Route>
+          <Route path="proveedores" element={<ProveedoresPage />} />
+          <Route path="reportes" element={<ReportesPage />} />
           <Route path="homologaciones" element={<HomologacionesPage />} />
           <Route path="homologadas" element={<HomologadasPage />} />
-          <Route element={<ProtectedRoute allowedRoles={['supervisor']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['supervisor_general']} />}>
             <Route path="configuracion" element={<ConfiguracionPage />} />
           </Route>
           <Route path="profile" element={<ProfilePage />} />

@@ -1,4 +1,14 @@
-import { DashboardMetric, Proveedor } from '../types';
+import { DashboardMetric, Empresa, ProcesoHomologacion, Proveedor } from '../types';
+
+export const empresasMock: Empresa[] = [
+  { id: 'decal', razonSocial: 'DECAL S.A.C.', ruc: '20512345678', nombreComercial: 'DECAL', contacto: 'María López', email: 'contacto@decal.com', telefono: '987654321', estado: 'Activa' },
+  { id: 'ufitec', razonSocial: 'UFITEC S.A.C.', ruc: '20698765432', nombreComercial: 'UFITEC', contacto: 'José Ramos', email: 'contacto@ufitec.com', telefono: '912345678', estado: 'Activa' },
+];
+
+export const procesosMock: ProcesoHomologacion[] = [
+  { id: 'proc-decal-2026', empresaId: 'decal', codigo: 'DECAL-2026-001', nombre: 'Homologación de proveedores 2026', fechaInicio: '2026-01-15', fechaLimite: '2026-10-30', estado: 'En curso', ejecutivaId: 'eje-decal' },
+  { id: 'proc-ufitec-2026', empresaId: 'ufitec', codigo: 'UFITEC-2026-001', nombre: 'Homologación anual 2026', fechaInicio: '2026-02-01', fechaLimite: '2026-11-15', estado: 'En curso', ejecutivaId: 'eje-ufitec' },
+];
 
 export const dashboardMetrics: DashboardMetric[] = [
   { label: 'Total proveedores', value: '1,248' },
@@ -28,6 +38,8 @@ export const donutEstados = [
 export const proveedoresMock: Proveedor[] = [
   {
     id: 'p-001',
+    empresaId: 'decal',
+    procesoId: 'proc-decal-2026',
     razonSocial: 'Soluciones A&F SAC',
     ruc: '20501234567',
     personaContacto: 'Mary Timoteo Mallma',
@@ -44,6 +56,8 @@ export const proveedoresMock: Proveedor[] = [
   },
   {
     id: 'p-002',
+    empresaId: 'decal',
+    procesoId: 'proc-decal-2026',
     razonSocial: '3A Ingenieria y Servicios Generales E.I.R.L',
     ruc: '20610564551',
     personaContacto: 'Mily Lopez Leon',
@@ -60,6 +74,8 @@ export const proveedoresMock: Proveedor[] = [
   },
   {
     id: 'p-003',
+    empresaId: 'ufitec',
+    procesoId: 'proc-ufitec-2026',
     razonSocial: '5 Jotas E.I.R.L.',
     ruc: '20538469719',
     personaContacto: 'Giovanna Saravia',
@@ -76,6 +92,8 @@ export const proveedoresMock: Proveedor[] = [
   },
   {
     id: 'p-004',
+    empresaId: 'ufitec',
+    procesoId: 'proc-ufitec-2026',
     razonSocial: 'AB Technology SAC',
     ruc: '20506491216',
     personaContacto: 'Joyce Uribe',

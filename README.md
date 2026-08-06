@@ -1,5 +1,7 @@
 # af-homologacion
 
+> Documentación funcional y técnica más reciente: [Informe de trabajo del 6 de agosto de 2026](docs/DOCUMENTACION-TRABAJO-2026-08-06.md).
+
 Scaffold React + Vite para el Sistema de Homologación A&F.
 
 ## Cómo ejecutar
