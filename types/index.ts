@@ -22,3 +22,12 @@ export interface DashboardMetric {
   value: string;
   description?: string;
 }
+
+export type UserRole = 'cliente' | 'ejecutiva' | 'supervisor';
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+}
