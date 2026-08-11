@@ -30,7 +30,7 @@ function ProveedoresPage() {
       setMessage('Ya existe un proveedor registrado con ese RUC.');
       return;
     }
-    addProveedor({ ...form, id: crypto.randomUUID(), empresaId: selectedEmpresa.id, procesoId: selectedProceso.id, estado: 'En proceso', calificacion: 0, fechaRegistro: new Date().toLocaleDateString('es-PE'), vigencia: 'N/A' });
+    addProveedor({ ...form, id: crypto.randomUUID(), empresaId: selectedEmpresa.id, procesoId: selectedProceso.id, estado: 'En proceso', estadoEjecutiva: 'Contactado', calificacion: 0, fechaRegistro: new Date().toLocaleDateString('es-PE'), vigencia: 'N/A' });
     setForm(emptyForm);
     setShowForm(false);
     setMessage('Proveedor registrado correctamente.');
@@ -43,7 +43,7 @@ function ProveedoresPage() {
       <section className="card">
         <div className="section-heading">
           <div>
-            <h2 className="page-title">Información general de proveedores</h2>
+            <h2 className="page-title">Información de proveedores</h2>
             <p className="context-label">{selectedEmpresa?.razonSocial || 'Sin empresa'} · {selectedProceso?.codigo || 'Sin proceso'}</p>
             <p className="secondary-text">{canEdit ? 'Registra proveedores y administra el estado de su homologación.' : 'Consulta el directorio y estado de los proveedores en modo solo lectura.'}</p>
           </div>
@@ -62,7 +62,7 @@ function ProveedoresPage() {
 
         {message ? <p className="success-message" role="status">{message}</p> : null}
         <input className="search-input" type="search" placeholder="Buscar proveedor, RUC o distrito..." value={search} onChange={(event) => setSearch(event.target.value)} />
-        <ProveedoresTable proveedores={proveedoresFiltrados} canEdit={canEdit} onStatusChange={updateEstado} />
+        <ProveedoresTable proveedores={proveedoresFiltrados} role={user?.role} canEdit={canEdit} onStatusChange={updateEstado} />
       </section>
     </div>
   );

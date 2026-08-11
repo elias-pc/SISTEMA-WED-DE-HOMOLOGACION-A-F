@@ -4,9 +4,9 @@ import { useTenant } from '../../src/tenant/TenantContext';
 import { roleLabels, routeRoles } from '../../services/auth';
 
 const menuItems = [
-  { label: 'Dashboard', path: '/panel' }, { label: 'Proveedores', path: '/panel/proveedores' },
-  { label: 'Homologaciones', path: '/panel/homologaciones' }, { label: 'Empresas homologadas', path: '/panel/homologadas' },
-  { label: 'Reportes', path: '/panel/reportes' }, { label: 'Empresas y procesos', path: '/panel/configuracion' }, { label: 'Perfil', path: '/panel/profile' },
+  { label: 'Dashboard', path: '/panel' }, { label: 'Información de proveedores', path: '/panel/proveedores' },
+  { label: 'Estatus de proveedores', path: '/panel/homologaciones' }, { label: 'Empresas homologadas', path: '/panel/homologadas' },
+  { label: 'Reportes', path: '/panel/reportes' }, { label: 'Empresas y procesos', path: '/panel/configuracion' },
 ];
 
 function MainLayout() {
@@ -32,18 +32,20 @@ function MainLayout() {
           <div><h1 className="page-title">Sistema de Homologación</h1><p className="secondary-text">Panel de proveedores y homologaciones.</p></div>
           <div className="user-menu"><div><strong>{user.name}</strong><span>{roleLabels[user.role]}</span></div><button type="button" onClick={handleLogout}>Cerrar sesión</button></div>
         </header>
-        <section className="tenant-bar" aria-label="Contexto de trabajo">
-          <label>Empresa
-            <select value={selectedEmpresa?.id || ''} onChange={(event) => selectEmpresa(event.target.value)} disabled={user.role !== 'supervisor_general'}>
-              {empresasDisponibles.map((empresa) => <option key={empresa.id} value={empresa.id}>{empresa.nombreComercial}</option>)}
-            </select>
-          </label>
-          <label>Proceso
-            <select value={selectedProceso?.id || ''} onChange={(event) => selectProceso(event.target.value)}>
-              {procesosEmpresa.map((proceso) => <option key={proceso.id} value={proceso.id}>{proceso.codigo} · {proceso.estado}</option>)}
-            </select>
-          </label>
-        </section>
+        {user.role === 'supervisor_general' ? (
+          <section className="tenant-bar" aria-label="Contexto de trabajo">
+            <label>Empresa
+              <select value={selectedEmpresa?.id || ''} onChange={(event) => selectEmpresa(event.target.value)}>
+                {empresasDisponibles.map((empresa) => <option key={empresa.id} value={empresa.id}>{empresa.nombreComercial}</option>)}
+              </select>
+            </label>
+            <label>Proceso
+              <select value={selectedProceso?.id || ''} onChange={(event) => selectProceso(event.target.value)}>
+                {procesosEmpresa.map((proceso) => <option key={proceso.id} value={proceso.id}>{proceso.codigo} · {proceso.estado}</option>)}
+              </select>
+            </label>
+          </section>
+        ) : null}
         <Outlet />
       </main>
     </div>

@@ -7,7 +7,6 @@ import HomologacionesPage from '../app/homologaciones/HomologacionesPage';
 import HomologadasPage from '../app/homologadas/HomologadasPage';
 import ReportesPage from '../app/reportes/ReportesPage';
 import ConfiguracionPage from '../app/configuracion/ConfiguracionPage';
-import ProfilePage from '../app/profile/ProfilePage';
 import UnauthorizedPage from '../app/unauthorized/UnauthorizedPage';
 import ProtectedRoute from './auth/ProtectedRoute';
 import LandingPage from '../app/landing/LandingPage';
@@ -27,7 +26,6 @@ function App() {
           <Route element={<ProtectedRoute allowedRoles={['supervisor_general']} />}>
             <Route path="configuracion" element={<ConfiguracionPage />} />
           </Route>
-          <Route path="profile" element={<ProfilePage />} />
           <Route path="sin-permiso" element={<UnauthorizedPage />} />
         </Route>
       </Route>

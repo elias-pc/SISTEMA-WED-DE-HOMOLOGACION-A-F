@@ -1,52 +1,13 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import { proveedoresMock } from '../../services/mockData';
-import type { Proveedor } from '../../types';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { api } from '../../services/api';
+import type { EstadoSeguimiento, Proveedor } from '../../types';
 import { useTenant } from '../tenant/TenantContext';
-
-const STORAGE_KEY = 'af-proveedores-v1';
-
-interface ProveedoresContextValue {
-  proveedores: Proveedor[];
-  addProveedor: (proveedor: Proveedor) => void;
-  updateEstado: (id: string, estado: Proveedor['estado']) => void;
+interface ProveedoresContextValue{proveedores:Proveedor[];loading:boolean;addProveedor:(proveedor:Proveedor)=>Promise<void>;updateEstado:(id:string,estado:EstadoSeguimiento)=>Promise<void>}
+const ProveedoresContext=createContext<ProveedoresContextValue|null>(null);
+export function ProveedoresProvider({children}:{children:ReactNode}){
+ const {selectedProceso}=useTenant();const [proveedores,setProveedores]=useState<Proveedor[]>([]);const [loading,setLoading]=useState(false);
+ useEffect(()=>{if(!selectedProceso){setProveedores([]);return}let active=true;setLoading(true);api.providers(selectedProceso.id).then(r=>{if(active)setProveedores(r.providers)}).catch(console.error).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[selectedProceso?.id]);
+ const value=useMemo<ProveedoresContextValue>(()=>({proveedores,loading,addProveedor:async proveedor=>{const result=await api.createProvider(proveedor);setProveedores(current=>[result.provider,...current])},updateEstado:async(id,estado)=>{const result=await api.updateProviderStatus(id,estado);setProveedores(current=>current.map(item=>item.id===id?result.provider:item))}}),[proveedores,loading]);
+ return <ProveedoresContext.Provider value={value}>{children}</ProveedoresContext.Provider>;
 }
-
-const ProveedoresContext = createContext<ProveedoresContextValue | null>(null);
-
-function readProveedores() {
-  try {
-    const value = localStorage.getItem(STORAGE_KEY);
-    if (!value) return proveedoresMock;
-    return (JSON.parse(value) as Proveedor[]).map((item) => {
-      if (item.empresaId && item.procesoId) return item;
-      const isUfitec = item.id === 'p-003' || item.id === 'p-004';
-      return { ...item, empresaId: isUfitec ? 'ufitec' : 'decal', procesoId: isUfitec ? 'proc-ufitec-2026' : 'proc-decal-2026' };
-    });
-  } catch {
-    return proveedoresMock;
-  }
-}
-
-export function ProveedoresProvider({ children }: { children: ReactNode }) {
-  const { selectedEmpresa, selectedProceso } = useTenant();
-  const [allProveedores, setAllProveedores] = useState<Proveedor[]>(readProveedores);
-  const proveedores = useMemo(() => allProveedores.filter((item) => item.empresaId === selectedEmpresa?.id && item.procesoId === selectedProceso?.id), [allProveedores, selectedEmpresa?.id, selectedProceso?.id]);
-
-  const save = (next: Proveedor[]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    setAllProveedores(next);
-  };
-
-  const addProveedor = (proveedor: Proveedor) => save([proveedor, ...allProveedores]);
-  const updateEstado = (id: string, estado: Proveedor['estado']) => {
-    save(allProveedores.map((proveedor) => proveedor.id === id ? { ...proveedor, estado } : proveedor));
-  };
-
-  return <ProveedoresContext.Provider value={{ proveedores, addProveedor, updateEstado }}>{children}</ProveedoresContext.Provider>;
-}
-
-export function useProveedores() {
-  const context = useContext(ProveedoresContext);
-  if (!context) throw new Error('useProveedores debe utilizarse dentro de ProveedoresProvider');
-  return context;
-}
+export function useProveedores(){const context=useContext(ProveedoresContext);if(!context)throw new Error('useProveedores debe utilizarse dentro de ProveedoresProvider');return context}

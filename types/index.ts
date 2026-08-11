@@ -1,4 +1,7 @@
 export type ProveedorEstado = 'Homologado' | 'En proceso' | 'Observado' | 'Vencido';
+export type EstadoEjecutiva = 'Contactado' | 'No encontrado' | 'Formulario enviado' | 'Formulario respondido';
+export type EstadoSupervisor = 'En coordinación' | 'No se ubica' | 'Visita no realizada' | 'Desestimado' | 'Visita realizada';
+export type EstadoSeguimiento = EstadoEjecutiva | EstadoSupervisor;
 
 export interface Proveedor {
   id: string;
@@ -14,6 +17,8 @@ export interface Proveedor {
   distrito: string;
   actividadPrincipal: string;
   estado: ProveedorEstado;
+  estadoEjecutiva?: EstadoEjecutiva;
+  estadoSupervisor?: EstadoSupervisor;
   calificacion: number;
   fechaRegistro: string;
   vigencia: string;

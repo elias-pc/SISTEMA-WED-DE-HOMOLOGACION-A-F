@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { createClientUser, demoUsers } from '../../services/auth';
+import { demoUsers } from '../../services/auth';
+import { api } from '../../services/api';
 import { useTenant } from '../../src/tenant/TenantContext';
 import type { Empresa, ProcesoHomologacion } from '../../types';
 
@@ -12,18 +13,22 @@ function ConfiguracionPage() {
   const ejecutivas = demoUsers.filter((item) => item.role === 'ejecutiva');
   const setField = (field: keyof typeof form, value: string) => setForm((current) => ({ ...current, [field]: value }));
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (empresas.some((item) => item.ruc === form.ruc)) { setMessage('Ya existe una empresa con ese RUC.'); return; }
     const empresaId = `${form.nombreComercial.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`;
     const procesoId = `proc-${empresaId}`;
     const empresa: Empresa = { id: empresaId, razonSocial: form.razonSocial, ruc: form.ruc, nombreComercial: form.nombreComercial, contacto: form.contacto, email: form.email, telefono: form.telefono, estado: 'Activa' };
     const proceso: ProcesoHomologacion = { id: procesoId, empresaId, codigo: form.codigo, nombre: form.nombreProceso, fechaInicio: form.fechaInicio, fechaLimite: form.fechaLimite, estado: 'Planificación', ejecutivaId: form.ejecutivaId };
-    createEmpresaConProceso(empresa, proceso);
-    createClientUser({ id: `cliente-${empresaId}`, name: `Cliente ${form.nombreComercial}`, email: form.clienteEmail.trim().toLowerCase(), password: form.clientePassword, role: 'cliente', empresaIds: [empresaId] });
-    createClientUser({ id: `supervisor-${empresaId}`, name: `Supervisor ${form.nombreComercial}`, email: form.supervisorEmail.trim().toLowerCase(), password: form.supervisorPassword, role: 'supervisor_empresa', empresaIds: [empresaId] });
-    setForm(initialForm);
-    setMessage('Empresa y proceso de homologación creados correctamente.');
+    try {
+      await createEmpresaConProceso(empresa, proceso);
+      await Promise.all([
+        api.createUser({ id: `cliente-${empresaId}`, name: `Cliente ${form.nombreComercial}`, email: form.clienteEmail.trim().toLowerCase(), password: form.clientePassword, role: 'cliente', empresaIds: [empresaId] }),
+        api.createUser({ id: `supervisor-${empresaId}`, name: `Supervisor ${form.nombreComercial}`, email: form.supervisorEmail.trim().toLowerCase(), password: form.supervisorPassword, role: 'supervisor_empresa', empresaIds: [empresaId] }),
+      ]);
+      setForm(initialForm);
+      setMessage('Empresa, proceso y usuarios creados correctamente.');
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudo crear la empresa.'); }
   };
 
   return (

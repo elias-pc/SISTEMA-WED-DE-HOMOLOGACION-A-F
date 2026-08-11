@@ -9,7 +9,7 @@ export const demoUsers: DemoUser[] = [
   { id: 'cli-ufitec', name: 'Cliente UFITEC', email: 'cliente@ufitec.com', password: 'Cliente123', role: 'cliente', empresaIds: ['ufitec'] },
   { id: 'eje-ufitec', name: 'Ejecutiva UFITEC', email: 'ejecutiva@ufitec.com', password: 'Ejecutiva123', role: 'ejecutiva', empresaIds: ['ufitec'] },
   { id: 'sup-ufitec', name: 'Supervisor UFITEC', email: 'supervisor@ufitec.com', password: 'Supervisor123', role: 'supervisor_empresa', empresaIds: ['ufitec'] },
-  { id: 'supervisor-general', name: 'Carlos Supervisor General', email: 'supervisor@af.com', password: 'Supervisor123', role: 'supervisor_general', empresaIds: [] },
+  { id: 'supervisor-general', name: 'Carlos Supervisor General', email: 'supervisor@af.com', password: 'super20226ayf', role: 'supervisor_general', empresaIds: [] },
 ];
 
 const CUSTOM_USERS_KEY = 'af-custom-users-v1';

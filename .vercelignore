@@ -1,0 +1,7 @@
+.git
+.agent-browser
+.pgdata
+server-dist
+vite-local.log
+vite-local-error.log
+npm-debug.log*

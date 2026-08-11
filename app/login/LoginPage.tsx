@@ -4,21 +4,26 @@ import { useAuth } from '../../src/auth/AuthContext';
 import { demoUsers, roleLabels } from '../../services/auth';
 
 function LoginPage() {
-  const { user, login } = useAuth();
+  const { user, login, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
+  if (loading) return <main className="login-page"><p>Verificando sesión...</p></main>;
   if (user) return <Navigate to="/panel" replace />;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
-    if (!login(email, password)) {
-      setError('El correo o la contraseña son incorrectos.');
+    setSubmitting(true);
+    const result = await login(email, password);
+    if (!result.ok) {
+      setError(result.error || 'No se pudo iniciar sesión.');
+      setSubmitting(false);
       return;
     }
     const requestedPath = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
@@ -56,7 +61,7 @@ function LoginPage() {
           </label>
 
           {error ? <p className="form-error" role="alert">{error}</p> : null}
-          <button type="submit" className="btn-primary login-submit" disabled={!email || !password}>Ingresar</button>
+          <button type="submit" className="btn-primary login-submit" disabled={!email || !password || submitting}>{submitting ? 'Ingresando...' : 'Ingresar'}</button>
         </form>
 
         <div className="demo-accounts">
