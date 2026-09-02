@@ -32,7 +32,7 @@ function MainLayout() {
           <div><h1 className="page-title">Sistema de Homologación</h1><p className="secondary-text">Panel de proveedores y homologaciones.</p></div>
           <div className="user-menu"><div><strong>{user.name}</strong><span>{roleLabels[user.role]}</span></div><button type="button" onClick={handleLogout}>Cerrar sesión</button></div>
         </header>
-        {user.role === 'supervisor_general' ? (
+        {user.role === 'supervisor_general' || user.role === 'administradora' ? (
           <section className="tenant-bar" aria-label="Contexto de trabajo">
             <label>Empresa
               <select value={selectedEmpresa?.id || ''} onChange={(event) => selectEmpresa(event.target.value)}>

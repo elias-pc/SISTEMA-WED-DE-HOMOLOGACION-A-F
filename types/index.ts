@@ -22,6 +22,10 @@ export interface Proveedor {
   calificacion: number;
   fechaRegistro: string;
   vigencia: string;
+  flujo?: FlujoProveedor;
+  ejecutivaAsignadaId?: string;
+  inspectorAsignadoId?: string;
+  transicionesDisponibles?: TransicionDisponible[];
 }
 
 export interface DashboardMetric {
@@ -30,7 +34,11 @@ export interface DashboardMetric {
   description?: string;
 }
 
-export type UserRole = 'cliente' | 'ejecutiva' | 'supervisor_empresa' | 'supervisor_general';
+export type UserRole = 'cliente' | 'ejecutiva' | 'supervisor_empresa' | 'supervisor_general' | 'administradora' | 'jefe_inspecciones' | 'inspector';
+
+export type EstadoFlujoProveedor = 'PENDIENTE_INSCRIPCION' | 'INSCRITO' | 'HOMOLOGADO';
+export interface FlujoProveedor { paso: number; estado: EstadoFlujoProveedor; subestado: string; version: number }
+export interface TransicionDisponible { codigo: string; etiqueta: string; datosObligatorios: string[] }
 
 export interface AuthUser {
   id: string;

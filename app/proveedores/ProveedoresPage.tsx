@@ -15,7 +15,7 @@ function ProveedoresPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState('');
-  const canEdit = user?.role === 'ejecutiva' || user?.role === 'supervisor_empresa' || user?.role === 'supervisor_general';
+  const canEdit = user?.role === 'administradora' || user?.role === 'supervisor_general';
 
   const proveedoresFiltrados = useMemo(() => {
     const term = search.trim().toLowerCase();

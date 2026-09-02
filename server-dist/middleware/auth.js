@@ -23,5 +23,5 @@ export function requireRoles(...roles) {
     };
 }
 export function canAccessCompany(user, companyId) {
-    return user.role === 'supervisor_general' || user.empresaIds.includes(companyId);
+    return user.role === 'supervisor_general' || user.role === 'administradora' || user.empresaIds.includes(companyId);
 }

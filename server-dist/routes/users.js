@@ -6,8 +6,8 @@ import { pool } from '../db/pool.js';
 import { authenticateRequest, requireRoles } from '../middleware/auth.js';
 import { validateBody } from '../validation.js';
 export const usersRouter = Router();
-usersRouter.use(authenticateRequest, requireRoles('supervisor_general'));
-const schema = z.object({ id: z.string().optional(), name: z.string().min(2).max(120), email: z.string().email(), password: z.string().min(8).max(128), role: z.enum(['cliente', 'ejecutiva', 'supervisor_empresa']), empresaIds: z.array(z.string()).min(1) });
+usersRouter.use(authenticateRequest, requireRoles('supervisor_general', 'administradora'));
+const schema = z.object({ id: z.string().optional(), name: z.string().min(2).max(120), email: z.string().email(), password: z.string().min(8).max(128), role: z.enum(['cliente', 'ejecutiva', 'supervisor_empresa', 'jefe_inspecciones', 'inspector']), empresaIds: z.array(z.string()).min(1) });
 usersRouter.post('/', validateBody(schema), async (request, response) => {
     const b = request.body, id = b.id || randomUUID(), hash = await bcrypt.hash(b.password, 12), client = await pool.connect();
     try {

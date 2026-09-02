@@ -9,7 +9,7 @@ export const processesRouter = Router();
 processesRouter.use(authenticateRequest);
 processesRouter.get('/', async (request, response) => {
     const user = request.user;
-    const result = user.role === 'supervisor_general'
+    const result = user.role === 'supervisor_general' || user.role === 'administradora'
         ? await pool.query('SELECT * FROM homologation_processes ORDER BY start_date DESC')
         : user.role === 'ejecutiva'
             ? await pool.query('SELECT * FROM homologation_processes WHERE executive_id=$1 OR company_id=ANY($2::text[]) ORDER BY start_date DESC', [user.id, user.empresaIds])
@@ -17,7 +17,7 @@ processesRouter.get('/', async (request, response) => {
     response.json({ processes: result.rows.map(mapProcess) });
 });
 const schema = z.object({ id: z.string().min(2).max(80).optional(), empresaId: z.string().min(1), codigo: z.string().min(3).max(80), nombre: z.string().min(3).max(180), fechaInicio: z.string().date(), fechaLimite: z.string().date(), estado: z.enum(['Planificación', 'En curso', 'Suspendido', 'Finalizado']).default('Planificación'), ejecutivaId: z.string().min(1) }).refine(v => v.fechaLimite >= v.fechaInicio, { message: 'La fecha límite debe ser posterior al inicio.', path: ['fechaLimite'] });
-processesRouter.post('/', requireRoles('supervisor_general'), validateBody(schema), async (request, response) => {
+processesRouter.post('/', requireRoles('supervisor_general', 'administradora'), validateBody(schema), async (request, response) => {
     const user = request.user, b = request.body;
     if (!canAccessCompany(user, b.empresaId))
         return response.status(403).json({ error: 'Empresa fuera de alcance.' });

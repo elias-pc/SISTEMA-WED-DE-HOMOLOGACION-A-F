@@ -9,9 +9,9 @@ interface Props {
   onStatusChange: (id: string, estado: EstadoSeguimiento) => void;
 }
 
-function estadoVariant(estado: EstadoSeguimiento) {
-  if (estado === 'Visita realizada' || estado === 'Formulario respondido') return 'success';
-  if (estado === 'No encontrado' || estado === 'No se ubica' || estado === 'Visita no realizada' || estado === 'Desestimado') return 'danger';
+function estadoVariant(estado: string) {
+  if (estado === 'Visita realizada' || estado === 'Formulario respondido' || estado === 'VIGENTE' || estado === 'CERTIFICADO_EXISTENTE') return 'success';
+  if (['No encontrado', 'No se ubica', 'Visita no realizada', 'Desestimado', 'DATOS_INCOMPLETOS', 'NO_ES_PROVEEDOR', 'NO_UBICADO', 'NO_RESPONDE', 'DESESTIMADO', 'NO_PARTICIPA', 'VISITA_DESESTIMADA', 'VENCIDO'].includes(estado)) return 'danger';
   return 'warning';
 }
 
@@ -31,7 +31,7 @@ function ProveedoresTable({ proveedores, role, canEdit, onStatusChange }: Props)
         </thead>
         <tbody>
           {proveedores.map((proveedor) => {
-            const estadoActual = estadoSeguimientoActual(proveedor);
+            const estadoActual = proveedor.flujo?.subestado || estadoSeguimientoActual(proveedor);
             const valorRol = esEjecutiva ? proveedor.estadoEjecutiva : proveedor.estadoSupervisor;
             return (
               <tr key={proveedor.id} style={{ borderTop: '1px solid var(--color-border)' }}>
@@ -45,7 +45,12 @@ function ProveedoresTable({ proveedores, role, canEdit, onStatusChange }: Props)
                 <td style={{ padding: '1rem 0.75rem' }}>{proveedor.distrito}</td>
                 <td style={{ padding: '1rem 0.75rem' }}>{proveedor.actividadPrincipal}</td>
                 <td style={{ padding: '1rem 0.75rem' }}>
-                  {canEdit ? (
+                  {proveedor.flujo ? (
+                    <div style={{ display: 'grid', gap: '0.35rem' }}>
+                      <Badge variant={estadoVariant(estadoActual)}>{estadoActual.split('_').join(' ')}</Badge>
+                      <small className="secondary-text">Paso {proveedor.flujo.paso} · v{proveedor.flujo.version}</small>
+                    </div>
+                  ) : canEdit ? (
                     <select aria-label={`Estado de ${proveedor.razonSocial}`} value={valorRol || opciones[0]} onChange={(event) => onStatusChange(proveedor.id, event.target.value as EstadoSeguimiento)}>
                       {opciones.map((estado) => <option key={estado}>{estado}</option>)}
                     </select>

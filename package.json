@@ -4,17 +4,21 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npm run build:server && node server/dev-runner.mjs",
+    "dev": "tsc -p server/tsconfig.json && node server/dev-runner.mjs",
     "dev:web": "vite",
     "dev:server": "node --watch server-dist/index.js",
     "build:server": "tsc -p server/tsconfig.json",
-    "build": "tsc && vite build && npm run build:server",
+    "build": "tsc && vite build && tsc -p server/tsconfig.json",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc -p server/tsconfig.json --noEmit && tsc -p api/tsconfig.json --noEmit",
     "test": "vitest run",
-    "db:migrate": "npm run build:server && node server-dist/db/migrate.js",
-    "db:seed": "npm run build:server && node server-dist/db/seed.js",
-    "db:setup": "npm run db:migrate && npm run db:seed",
+    "db:migrate": "tsc -p server/tsconfig.json && node server-dist/db/migrate.js",
+    "db:seed": "tsc -p server/tsconfig.json && node server-dist/db/seed.js",
+    "db:setup": "tsc -p server/tsconfig.json && node server-dist/db/migrate.js && node server-dist/db/seed.js",
+    "db:check-local": "node scripts/check-local-database.mjs",
+    "db:migrate:local": "node scripts/check-local-database.mjs && tsc -p server/tsconfig.json && node server-dist/db/migrate.js",
+    "db:setup:local": "node scripts/check-local-database.mjs && tsc -p server/tsconfig.json && node server-dist/db/migrate.js && node server-dist/db/seed.js",
+    "test:local": "node scripts/check-local-database.mjs && tsc -p server/tsconfig.json && node server-dist/db/migrate.js && node server-dist/db/seed.js && vitest run && tsc --noEmit && tsc -p server/tsconfig.json --noEmit && tsc -p api/tsconfig.json --noEmit",
     "start": "node server-dist/index.js"
   },
   "dependencies": {
@@ -43,6 +47,6 @@
     "tsx": "^4.23.12",
     "typescript": "^5.6.2",
     "vite": "^5.4.1",
-    "vitest": "^4.1.10"
+    "vitest": "^3.2.4"
   }
 }

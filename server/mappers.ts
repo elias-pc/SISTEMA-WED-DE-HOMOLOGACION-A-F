@@ -6,4 +6,6 @@ export const mapProvider = (row: Record<string, unknown>) => ({
  departamento: row.department, distrito: row.district, actividadPrincipal: row.main_activity, estado: row.status,
  estadoEjecutiva: row.executive_status || undefined, estadoSupervisor: row.supervisor_status || undefined,
  calificacion: Number(row.score), fechaRegistro: String(row.registered_at).slice(0,10), vigencia: row.valid_until ? String(row.valid_until).slice(0,10) : 'N/A',
+ flujo: row.current_step ? { paso: Number(row.current_step), estado: row.workflow_status, subestado: row.workflow_substatus, version: Number(row.transition_version || 0) } : undefined,
+ ejecutivaAsignadaId: row.assigned_executive_id || undefined, inspectorAsignadoId: row.assigned_inspector_id || undefined,
 });

@@ -23,7 +23,7 @@ function App() {
           <Route path="reportes" element={<ReportesPage />} />
           <Route path="homologaciones" element={<HomologacionesPage />} />
           <Route path="homologadas" element={<HomologadasPage />} />
-          <Route element={<ProtectedRoute allowedRoles={['supervisor_general']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['supervisor_general', 'administradora']} />}>
             <Route path="configuracion" element={<ConfiguracionPage />} />
           </Route>
           <Route path="sin-permiso" element={<UnauthorizedPage />} />

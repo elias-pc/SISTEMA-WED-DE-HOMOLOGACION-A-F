@@ -17,6 +17,9 @@ const users = [
  ['eje-ufitec','Ejecutiva UFITEC','ejecutiva@ufitec.com',demoPassword,'ejecutiva','ufitec'],
  ['sup-ufitec','Supervisor UFITEC','supervisor@ufitec.com',demoPassword,'supervisor_empresa','ufitec'],
  ['supervisor-general','Carlos Supervisor General','supervisor@af.com',supervisorPassword,'supervisor_general',null],
+ ['admin-af','Administradora A&F','administradora@af.com',supervisorPassword,'administradora',null],
+ ['jefe-decal','Jefe de Inspecciones DECAL','jefe.inspecciones@decal.com',demoPassword,'jefe_inspecciones','decal'],
+ ['inspector-decal','Inspector DECAL','inspector@decal.com',demoPassword,'inspector','decal'],
 ] as const;
 async function seed() {
  const client = await pool.connect();

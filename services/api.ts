@@ -1,4 +1,4 @@
-import type { AuthUser, Empresa, EstadoSeguimiento, ProcesoHomologacion, Proveedor } from '../types';
+import type { AuthUser, Empresa, EstadoSeguimiento, ProcesoHomologacion, Proveedor, TransicionDisponible } from '../types';
 
 export class ApiError extends Error { constructor(message:string,public status:number){super(message)} }
 async function request<T>(path:string,options:RequestInit={}):Promise<T>{
@@ -17,5 +17,7 @@ export const api={
  providers:(processId:string)=>request<{providers:Proveedor[]}>(`/providers?processId=${encodeURIComponent(processId)}`),
  createProvider:(provider:Proveedor)=>request<{provider:Proveedor}>('/providers',{method:'POST',body:JSON.stringify(provider)}),
   updateProviderStatus:(id:string,estado:EstadoSeguimiento)=>request<{provider:Proveedor}>(`/providers/${encodeURIComponent(id)}/status`,{method:'PATCH',body:JSON.stringify({estado})}),
-  createUser:(user:{id?:string;name:string;email:string;password:string;role:'cliente'|'ejecutiva'|'supervisor_empresa';empresaIds:string[]})=>request<{user:AuthUser}>('/users',{method:'POST',body:JSON.stringify(user)}),
+  providerWorkflow:(id:string)=>request<{provider:Proveedor;transicionesDisponibles:TransicionDisponible[];historial:unknown[]}>(`/providers/${encodeURIComponent(id)}/workflow`),
+  applyProviderTransition:(id:string,payload:{transicion:string;datos?:Record<string,unknown>;motivo?:string;version?:number})=>request<{provider:Proveedor;transicionesDisponibles:TransicionDisponible[]}>(`/providers/${encodeURIComponent(id)}/transitions`,{method:'POST',body:JSON.stringify(payload)}),
+  createUser:(user:{id?:string;name:string;email:string;password:string;role:'cliente'|'ejecutiva'|'supervisor_empresa'|'jefe_inspecciones'|'inspector';empresaIds:string[]})=>request<{user:AuthUser}>('/users',{method:'POST',body:JSON.stringify(user)}),
 };

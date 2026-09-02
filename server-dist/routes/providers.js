@@ -5,12 +5,9 @@ import { pool } from '../db/pool.js';
 import { authenticateRequest, canAccessCompany, requireRoles } from '../middleware/auth.js';
 import { mapProvider } from '../mappers.js';
 import { validateBody } from '../validation.js';
-import { canUpdateStatus } from '../authorization.js';
+import { availableTransitions, legacyProviderStatus, transitionCodes, validateTransition, } from '../workflow.js';
 export const providersRouter = Router();
 providersRouter.use(authenticateRequest);
-const executiveStatuses = ['Contactado', 'No encontrado', 'Formulario enviado', 'Formulario respondido'];
-const supervisorStatuses = ['En coordinación', 'No se ubica', 'Visita no realizada', 'Desestimado', 'Visita realizada'];
-const generalStatus = (status) => status === 'Visita realizada' ? 'Homologado' : status === 'Desestimado' ? 'Vencido' : ['No encontrado', 'No se ubica', 'Visita no realizada'].includes(status) ? 'Observado' : 'En proceso';
 providersRouter.get('/', async (request, response) => {
     const user = request.user;
     const processId = z.string().min(1).safeParse(request.query.processId);
@@ -23,10 +20,21 @@ providersRouter.get('/', async (request, response) => {
     if (!canAccessCompany(user, scope.company_id) && !(user.role === 'ejecutiva' && scope.executive_id === user.id))
         return response.status(403).json({ error: 'Proceso fuera de tu alcance.' });
     const result = await pool.query('SELECT * FROM providers WHERE process_id=$1 ORDER BY created_at DESC', [processId.data]);
-    response.json({ providers: result.rows.map(mapProvider) });
+    const visibleRows = result.rows.filter((row) => canAccessProvider(user, { ...row, executive_id: scope.executive_id }));
+    response.json({ providers: visibleRows.map((row) => {
+            const provider = mapProvider(row);
+            const state = workflowStateFromRow(row);
+            return { ...provider, transicionesDisponibles: availableTransitions(state, user.role).map(publicTransition) };
+        }) });
 });
+function workflowStateFromRow(row) {
+    return { step: Number(row.current_step), status: row.workflow_status, substatus: row.workflow_substatus };
+}
+function publicTransition(transition) {
+    return { codigo: transition.code, etiqueta: transition.label, datosObligatorios: [...(transition.requiredFields || [])] };
+}
 const createSchema = z.object({ id: z.string().optional(), empresaId: z.string().min(1), procesoId: z.string().min(1), razonSocial: z.string().min(2).max(180), ruc: z.string().regex(/^\d{11}$/), personaContacto: z.string().min(2).max(120), telefonos: z.string().min(6).max(80), email: z.string().email(), direccion: z.string().min(3).max(240), departamento: z.string().min(2).max(80), distrito: z.string().min(2).max(80), actividadPrincipal: z.string().min(2).max(240) });
-providersRouter.post('/', requireRoles('ejecutiva', 'supervisor_empresa', 'supervisor_general'), validateBody(createSchema), async (request, response) => {
+providersRouter.post('/', requireRoles('supervisor_general', 'administradora'), validateBody(createSchema), async (request, response) => {
     const user = request.user, b = request.body;
     const process = await pool.query('SELECT company_id,executive_id FROM homologation_processes WHERE id=$1', [b.procesoId]);
     if (!process.rowCount || process.rows[0].company_id !== b.empresaId)
@@ -37,18 +45,101 @@ providersRouter.post('/', requireRoles('ejecutiva', 'supervisor_empresa', 'super
  VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'Contactado') RETURNING *`, [b.id || randomUUID(), b.empresaId, b.procesoId, b.razonSocial, b.ruc, b.personaContacto, b.telefonos, b.email, b.direccion, b.departamento, b.distrito, b.actividadPrincipal]);
     response.status(201).json({ provider: mapProvider(result.rows[0]) });
 });
-const statusSchema = z.object({ estado: z.enum([...executiveStatuses, ...supervisorStatuses]) });
-providersRouter.patch('/:id/status', requireRoles('ejecutiva', 'supervisor_empresa', 'supervisor_general'), validateBody(statusSchema), async (request, response) => {
-    const user = request.user, status = request.body.estado;
-    const found = await pool.query(`SELECT p.company_id,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`, [request.params.id]);
+providersRouter.patch('/:id/status', (_request, response) => response.status(410).json({ error: 'El cambio libre de estado fue retirado. Utiliza una transición válida del flujo.' }));
+const transitionSchema = z.object({
+    transicion: z.enum(transitionCodes),
+    datos: z.record(z.string(), z.unknown()).default({}),
+    motivo: z.string().trim().min(3).max(1000).optional(),
+    version: z.number().int().nonnegative().optional(),
+});
+providersRouter.get('/:id/workflow', async (request, response) => {
+    const user = request.user;
+    const found = await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`, [request.params.id]);
     if (!found.rowCount)
         return response.status(404).json({ error: 'Proveedor no encontrado.' });
-    const row = found.rows[0], isExecutive = user.role === 'ejecutiva';
-    if (!canAccessCompany(user, row.company_id) && !(isExecutive && row.executive_id === user.id))
+    const row = found.rows[0];
+    if (!canAccessProvider(user, row))
         return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' });
-    if (!canUpdateStatus(user.role, status))
-        return response.status(403).json({ error: isExecutive ? 'La ejecutiva solo puede actualizar estados de contacto y formulario.' : 'Los supervisores solo pueden actualizar estados de coordinación y visita.' });
-    const column = isExecutive ? 'executive_status' : 'supervisor_status';
-    const result = await pool.query(`UPDATE providers SET ${column}=$1,status=$2,updated_at=now() WHERE id=$3 RETURNING *`, [status, generalStatus(status), request.params.id]);
-    response.json({ provider: mapProvider(result.rows[0]) });
+    const history = await pool.query(`SELECT id,transition_code,from_step,from_status,from_substatus,to_step,to_status,to_substatus,actor_user_id,actor_role,reason,metadata,created_at FROM provider_status_history WHERE provider_id=$1 ORDER BY created_at DESC`, [request.params.id]);
+    const state = workflowStateFromRow(row);
+    response.json({ provider: mapProvider(row), transicionesDisponibles: availableTransitions(state, user.role).map(publicTransition), historial: history.rows });
 });
+providersRouter.post('/:id/transitions', validateBody(transitionSchema), async (request, response) => {
+    const user = request.user;
+    const body = request.body;
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const found = await client.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1 FOR UPDATE OF p`, [request.params.id]);
+        if (!found.rowCount) {
+            await client.query('ROLLBACK');
+            return response.status(404).json({ error: 'Proveedor no encontrado.' });
+        }
+        const row = found.rows[0];
+        if (!canAccessProvider(user, row)) {
+            await client.query('ROLLBACK');
+            return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' });
+        }
+        if (body.version !== undefined && body.version !== Number(row.transition_version)) {
+            await client.query('ROLLBACK');
+            return response.status(409).json({ error: 'El flujo fue actualizado por otro usuario. Recarga los datos antes de continuar.' });
+        }
+        const from = workflowStateFromRow(row);
+        const transitionData = body.motivo && body.datos.motivo === undefined ? { ...body.datos, motivo: body.motivo } : body.datos;
+        const validation = validateTransition(from, body.transicion, user.role, transitionData);
+        if (!validation.ok) {
+            await client.query('ROLLBACK');
+            const status = validation.error.includes('rol') ? 403 : validation.missingFields?.length ? 422 : 409;
+            return response.status(status).json({ error: validation.error, camposFaltantes: validation.missingFields || [] });
+        }
+        const to = validation.transition.to;
+        const assignmentError = await validateAssignment(client, body.transicion, transitionData, row.company_id);
+        if (assignmentError) {
+            await client.query('ROLLBACK');
+            return response.status(422).json({ error: assignmentError });
+        }
+        const legacy = legacyProviderStatus(to);
+        const detail = legacyDetailStatuses(to.substatus);
+        const updated = await client.query(`UPDATE providers SET current_step=$1,workflow_status=$2,workflow_substatus=$3,status=$4,
+   executive_status=COALESCE($5,executive_status),supervisor_status=COALESCE($6,supervisor_status),
+   assigned_executive_id=CASE WHEN $7='ASIGNAR_EJECUTIVA' THEN $8 ELSE assigned_executive_id END,
+   assigned_inspector_id=CASE WHEN $7 IN ('ASIGNAR_INSPECTOR','RETOMAR_VISITA') THEN $9 ELSE assigned_inspector_id END,
+   valid_until=COALESCE($10::date,valid_until),transition_version=transition_version+1,updated_at=now()
+   WHERE id=$11 RETURNING *`, [to.step, to.status, to.substatus, legacy, detail.executive, detail.supervisor, body.transicion, transitionData.ejecutivaId || null, transitionData.inspectorId || null, transitionData.fechaVencimiento || null, request.params.id]);
+        await client.query(`INSERT INTO provider_status_history(id,provider_id,transition_code,from_step,from_status,from_substatus,to_step,to_status,to_substatus,actor_user_id,actor_role,reason,metadata)
+   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb)`, [randomUUID(), request.params.id, body.transicion, from.step, from.status, from.substatus, to.step, to.status, to.substatus, user.id, user.role, body.motivo || String(transitionData.motivo || '') || null, JSON.stringify(transitionData)]);
+        await client.query('COMMIT');
+        const next = workflowStateFromRow(updated.rows[0]);
+        response.json({ provider: mapProvider(updated.rows[0]), transicionesDisponibles: availableTransitions(next, user.role).map(publicTransition) });
+    }
+    catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    }
+    finally {
+        client.release();
+    }
+});
+async function validateAssignment(client, transition, data, companyId) {
+    const target = transition === 'ASIGNAR_EJECUTIVA' ? { id: data.ejecutivaId, roles: ['ejecutiva'] } : ['ASIGNAR_INSPECTOR', 'RETOMAR_VISITA'].includes(transition) ? { id: data.inspectorId, roles: ['inspector'] } : null;
+    if (!target)
+        return null;
+    const result = await client.query(`SELECT u.role FROM users u JOIN user_companies uc ON uc.user_id=u.id WHERE u.id=$1 AND uc.company_id=$2 AND u.active=true`, [target.id, companyId]);
+    if (!result.rowCount || !target.roles.includes(result.rows[0].role))
+        return transition === 'ASIGNAR_EJECUTIVA' ? 'La ejecutiva indicada no es válida para esta empresa.' : 'El inspector indicado no es válido para esta empresa.';
+    return null;
+}
+function legacyDetailStatuses(substatus) {
+    const executive = { EN_COORDINACION: 'Contactado', NO_UBICADO: 'No encontrado', FORMULARIO_ENVIADO: 'Formulario enviado', FORMULARIO_DEVUELTO: 'Formulario respondido' };
+    const supervisor = { VISITA_EN_COORDINACION: 'En coordinación', NO_UBICADO_VISITA: 'No se ubica', VISITA_REPROGRAMADA: 'Visita no realizada', VISITA_DESESTIMADA: 'Desestimado', VISITA_REALIZADA: 'Visita realizada' };
+    return { executive: executive[substatus] || null, supervisor: supervisor[substatus] || null };
+}
+function canAccessProvider(user, row) {
+    if (user.role === 'supervisor_general' || user.role === 'administradora')
+        return true;
+    if (user.role === 'ejecutiva')
+        return (row.assigned_executive_id || row.executive_id) === user.id;
+    if (user.role === 'inspector')
+        return row.assigned_inspector_id === user.id;
+    return canAccessCompany(user, String(row.company_id));
+}

@@ -26,16 +26,16 @@ export function createClientUser(user: DemoUser) {
   localStorage.setItem(CUSTOM_USERS_KEY, JSON.stringify([...customUsers, user]));
 }
 
-export const roleLabels: Record<UserRole, string> = { cliente: 'Cliente', ejecutiva: 'Ejecutiva', supervisor_empresa: 'Supervisor de empresa', supervisor_general: 'Supervisor general' };
+export const roleLabels: Record<UserRole, string> = { cliente: 'Cliente', ejecutiva: 'Ejecutiva', supervisor_empresa: 'Supervisor de empresa', supervisor_general: 'Supervisor general', administradora: 'Administradora', jefe_inspecciones: 'Jefe de inspecciones', inspector: 'Inspector' };
 
 export const routeRoles: Record<string, UserRole[]> = {
-  '/': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general'],
-  '/proveedores': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general'],
-  '/homologaciones': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general'],
-  '/homologadas': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general'],
-  '/reportes': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general'],
-  '/configuracion': ['supervisor_general'],
-  '/profile': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general'],
+  '/': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
+  '/proveedores': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
+  '/homologaciones': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
+  '/homologadas': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
+  '/reportes': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
+  '/configuracion': ['supervisor_general', 'administradora'],
+  '/profile': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
 };
 
 export function authenticate(email: string, password: string): AuthUser | null {

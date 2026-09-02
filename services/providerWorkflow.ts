@@ -36,6 +36,7 @@ export function estadoSeguimientoActual(proveedor: Proveedor): EstadoSeguimiento
 }
 
 export function avanceProveedor(proveedor: Proveedor) {
+  if (proveedor.flujo) return Math.round((proveedor.flujo.paso / 9) * 100);
   return avancePorEstado[estadoSeguimientoActual(proveedor)];
 }
 
