@@ -40,6 +40,55 @@ export type EstadoFlujoProveedor = 'PENDIENTE_INSCRIPCION' | 'INSCRITO' | 'HOMOL
 export interface FlujoProveedor { paso: number; estado: EstadoFlujoProveedor; subestado: string; version: number }
 export interface TransicionDisponible { codigo: string; etiqueta: string; datosObligatorios: string[] }
 
+export interface HistorialFlujo {
+  id: string;
+  transition_code: string;
+  from_step: number;
+  from_status: string;
+  from_substatus: string;
+  to_step: number;
+  to_status: string;
+  to_substatus: string;
+  actor_role: string;
+  reason?: string | null;
+  created_at: string;
+}
+
+export interface ExpedienteProveedor {
+  assignments: Array<Record<string, unknown>>;
+  payments: Array<Record<string, unknown>>;
+  forms: Array<Record<string, unknown>>;
+  inspections: Array<Record<string, unknown>>;
+  documents: Array<{id:string;category:string;original_name:string;mime_type:string;byte_size:number;expires_on?:string|null;created_at:string}>;
+  certificates: Array<Record<string, unknown>>;
+  contactPreferences: {whatsapp_phone?:string|null;whatsapp_opt_in:boolean;whatsapp_opt_in_source?:string|null}|null;
+  notifications: Array<Record<string, unknown>>;
+}
+
+export interface ImportPreviewRow { rowNumber:number; errors:string[]; provider?: Partial<Proveedor> }
+export interface ImportPreview { summary:{totalRows:number;readyRows:number;rejectedRows:number}; rows:ImportPreviewRow[]; batchId?:string }
+export interface DashboardResumen { total:number; homologados:number; inscritos:number; pendientes:number; sin_respuesta:number; no_participan:number; por_vencer:number; vencidos:number }
+export interface ReporteOperativo { type:string; columns:string[]; rows:unknown[][] }
+
+export interface CarteraEjecutivaResumen { id:string; name:string; email:string; activeCount:number }
+export interface ProveedorCartera {
+  id:string; legal_name:string; tax_id:string; assigned_executive_id?:string|null; assigned_executive_name?:string|null;
+  current_step:number; workflow_status:string; workflow_substatus:string; updated_at:string;
+}
+export interface HistorialAsignacion {
+  id:string; provider_id:string; provider_name:string; assigned_user_id:string; assigned_user_name:string;
+  assigned_by_user_id:string; assigned_by_name:string; assigned_at:string; released_at?:string|null;
+  released_by_user_id?:string|null; released_by_name?:string|null; reason?:string|null; release_reason?:string|null;
+}
+export interface ResumenCartera { executives:CarteraEjecutivaResumen[]; unassignedCount:number; providers:ProveedorCartera[]; history:HistorialAsignacion[] }
+export interface ResultadoAsignacion { assigned?:number; reassigned?:number; unassigned?:number; unchanged:number; total?:number }
+export interface ProductividadEjecutiva {
+  executiveId:string; executiveName:string; currentPortfolio:number; assignedInPeriod:number; contacts:number;
+  formsSent:number; formsReturned:number; visitsCoordinated:number; homologated:number; pending:number;
+  averageHoursByStep:Record<string,number>;
+}
+export interface ReporteProductividad { from:string; to:string; rows:ProductividadEjecutiva[] }
+
 export interface AuthUser {
   id: string;
   name: string;
@@ -70,5 +119,5 @@ export interface ProcesoHomologacion {
   fechaInicio: string;
   fechaLimite: string;
   estado: ProcesoEstado;
-  ejecutivaId: string;
+  ejecutivaId?: string;
 }

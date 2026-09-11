@@ -36,4 +36,15 @@ describe('motor formal de homologación', () => {
     expect(validateTransition(state, 'MARCAR_POR_VENCER', 'ejecutiva').ok).toBe(false);
     expect(validateTransition(state, 'MARCAR_POR_VENCER', 'sistema').ok).toBe(true);
   });
+
+  it('obliga a retomar coordinación antes de cambiar entre resultados alternativos del paso 4', () => {
+    const state = { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_RESPONDE' } as const;
+    expect(validateTransition(state, 'MARCAR_NO_UBICADO', 'ejecutiva', { motivo: 'Nuevo intento' }).ok).toBe(false);
+    expect(validateTransition(state, 'INICIAR_COORDINACION', 'ejecutiva').ok).toBe(true);
+  });
+
+  it('impide que la ejecutiva se asigne una cartera y autoriza a la supervisora general como administradora', () => {
+    expect(validateTransition(initialProviderWorkflowState, 'ASIGNAR_EJECUTIVA', 'ejecutiva', { ejecutivaId: 'eje-decal' }).ok).toBe(false);
+    expect(validateTransition(initialProviderWorkflowState, 'ASIGNAR_EJECUTIVA', 'supervisor_general', { ejecutivaId: 'eje-decal' }).ok).toBe(true);
+  });
 });

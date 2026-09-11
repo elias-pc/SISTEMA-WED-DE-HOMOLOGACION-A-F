@@ -1,7 +1,10 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { pool } from './pool.js';
+import pg from 'pg';
+import { config } from '../config.js';
+const { Pool } = pg;
+const pool = new Pool({ connectionString: config.databaseUrlUnpooled, max: 1, connectionTimeoutMillis: 10_000, ssl: config.databaseSsl ? { rejectUnauthorized: false } : undefined });
 const directory = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
 const sourceDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../server/db/migrations');
 async function migrate() {

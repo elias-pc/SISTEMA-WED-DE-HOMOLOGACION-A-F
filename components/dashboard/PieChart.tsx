@@ -7,9 +7,10 @@ interface PieSlice {
 interface Props {
   title: string;
   slices: PieSlice[];
+  large?: boolean;
 }
 
-function PieChart({ title, slices }: Props) {
+function PieChart({ title, slices, large = false }: Props) {
   const radius = 80;
   const center = 100;
   const total = slices.reduce((sum, slice) => sum + slice.value, 0);
@@ -29,19 +30,19 @@ function PieChart({ title, slices }: Props) {
   });
 
   return (
-    <div className="card" style={{ padding: '1rem' }}>
-      <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{title}</h3>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
-        <svg width="200" height="200" viewBox="0 0 200 200">
+    <div className={`card pie-chart-card${large ? ' pie-chart-card-large' : ''}`}>
+      <h3>{title}</h3>
+      <div className="pie-chart-layout">
+        <svg className="pie-chart-svg" width="200" height="200" viewBox="0 0 200 200" role="img" aria-label={title}>
           {pathData.map((slice, index) => (
             <path key={index} d={slice.path} fill={slice.color} />
           ))}
         </svg>
-        <div style={{ display: 'grid', gap: '0.5rem' }}>
+        <div className="pie-chart-legend">
           {pathData.map((slice) => (
-            <div key={slice.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ width: '0.9rem', height: '0.9rem', borderRadius: '0.25rem', background: slice.color }} />
-              <span style={{ fontSize: '0.95rem', color: 'var(--color-text)' }}>
+            <div key={slice.label}>
+              <span className="pie-chart-swatch" style={{ background: slice.color }} />
+              <span>
                 {slice.label}: {slice.value}
               </span>
             </div>

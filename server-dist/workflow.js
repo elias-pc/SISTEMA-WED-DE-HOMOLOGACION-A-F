@@ -22,19 +22,19 @@ export const transitionCodes = [
     'DESESTIMAR_VISITA', 'RETOMAR_VISITA', 'REGISTRAR_VISITA', 'CONFIRMAR_CONFORMIDAD',
     'EMITIR_ENTREGABLE', 'INICIAR_OBSERVACIONES', 'CERRAR_OBSERVACIONES', 'MARCAR_POR_VENCER', 'MARCAR_VENCIDO',
 ];
-const pendingEnrollmentOutcomes = [
-    'EN_COORDINACION', 'DATOS_INCOMPLETOS', 'NO_UBICADO', 'NO_RESPONDE', 'NO_PARTICIPA',
+const retryableEnrollmentOutcomes = [
+    'DATOS_INCOMPLETOS', 'NO_UBICADO', 'NO_RESPONDE', 'NO_PARTICIPA',
 ];
 export const workflowTransitions = [
     { code: 'ASIGNAR_EJECUTIVA', label: 'Asignar ejecutiva', from: ['REGISTRADO'], to: { step: 3, status: 'PENDIENTE_INSCRIPCION', substatus: 'ASIGNADO_EJECUTIVA' }, roles: ['administradora'], requiredFields: ['ejecutivaId'] },
-    { code: 'INICIAR_COORDINACION', label: 'Iniciar o retomar coordinación', from: ['ASIGNADO_EJECUTIVA', 'DATOS_INCOMPLETOS', 'NO_UBICADO', 'NO_RESPONDE', 'NO_PARTICIPA'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'EN_COORDINACION' }, roles: ['ejecutiva'] },
-    { code: 'MARCAR_DATOS_INCOMPLETOS', label: 'Marcar datos incompletos', from: pendingEnrollmentOutcomes, to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'DATOS_INCOMPLETOS' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
-    { code: 'MARCAR_NO_ES_PROVEEDOR', label: 'Marcar que no es proveedor', from: pendingEnrollmentOutcomes, to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_ES_PROVEEDOR' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
-    { code: 'MARCAR_NO_UBICADO', label: 'Marcar no ubicado', from: pendingEnrollmentOutcomes, to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_UBICADO' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
-    { code: 'MARCAR_NO_RESPONDE', label: 'Marcar que no responde', from: pendingEnrollmentOutcomes, to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_RESPONDE' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
-    { code: 'DESESTIMAR_INSCRIPCION', label: 'Desestimar inscripción', from: pendingEnrollmentOutcomes, to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'DESESTIMADO' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
-    { code: 'MARCAR_NO_PARTICIPA', label: 'Marcar que no participa', from: pendingEnrollmentOutcomes, to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_PARTICIPA' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
-    { code: 'REGISTRAR_CERTIFICADO_EXISTENTE', label: 'Registrar certificado existente', from: pendingEnrollmentOutcomes, to: { step: 9, status: 'HOMOLOGADO', substatus: 'VIGENTE' }, roles: ['ejecutiva'], requiredFields: ['tipoDocumento', 'fechaEmision', 'fechaVencimiento'] },
+    { code: 'INICIAR_COORDINACION', label: 'Iniciar o retomar coordinación', from: ['ASIGNADO_EJECUTIVA', ...retryableEnrollmentOutcomes], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'EN_COORDINACION' }, roles: ['ejecutiva'] },
+    { code: 'MARCAR_DATOS_INCOMPLETOS', label: 'Marcar datos incompletos', from: ['EN_COORDINACION'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'DATOS_INCOMPLETOS' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
+    { code: 'MARCAR_NO_ES_PROVEEDOR', label: 'Marcar que no es proveedor', from: ['EN_COORDINACION'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_ES_PROVEEDOR' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
+    { code: 'MARCAR_NO_UBICADO', label: 'Marcar no ubicado', from: ['EN_COORDINACION'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_UBICADO' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
+    { code: 'MARCAR_NO_RESPONDE', label: 'Marcar que no responde', from: ['EN_COORDINACION'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_RESPONDE' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
+    { code: 'DESESTIMAR_INSCRIPCION', label: 'Desestimar inscripción', from: ['EN_COORDINACION'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'DESESTIMADO' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
+    { code: 'MARCAR_NO_PARTICIPA', label: 'Marcar que no participa', from: ['EN_COORDINACION'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_PARTICIPA' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
+    { code: 'REGISTRAR_CERTIFICADO_EXISTENTE', label: 'Registrar certificado existente', from: ['EN_COORDINACION'], to: { step: 9, status: 'HOMOLOGADO', substatus: 'VIGENTE' }, roles: ['ejecutiva'], requiredFields: ['tipoDocumento', 'fechaEmision', 'fechaVencimiento'] },
     { code: 'REGISTRAR_PAGO', label: 'Registrar pago', from: ['EN_COORDINACION'], to: { step: 5, status: 'INSCRITO', substatus: 'PAGO_CONFIRMADO' }, roles: ['ejecutiva'], requiredFields: ['banco', 'monto', 'modalidad', 'fechaPago', 'numeroOperacion', 'numeroFactura'] },
     { code: 'ENVIAR_FORMULARIO', label: 'Enviar formulario', from: ['PAGO_CONFIRMADO'], to: { step: 5, status: 'INSCRITO', substatus: 'FORMULARIO_ENVIADO' }, roles: ['ejecutiva'], requiredFields: ['formulario'] },
     { code: 'RECIBIR_FORMULARIO', label: 'Registrar devolución del formulario', from: ['FORMULARIO_ENVIADO'], to: { step: 6, status: 'INSCRITO', substatus: 'FORMULARIO_DEVUELTO' }, roles: ['ejecutiva'], requiredFields: ['documentosConformes'] },
@@ -54,13 +54,39 @@ export const workflowTransitions = [
 ];
 export function workflowRolesForUserRole(role) {
     if (role === 'supervisor_general')
-        return ['administradora', 'ejecutiva', 'jefe_inspecciones', 'inspector'];
-    if (role === 'supervisor_empresa' || role === 'jefe_inspecciones')
+        return ['administradora'];
+    if (role === 'jefe_inspecciones')
         return ['jefe_inspecciones'];
     if (role === 'administradora' || role === 'ejecutiva' || role === 'inspector')
         return [role];
     return [];
 }
+const expectedStateBySubstatus = {
+    REGISTRADO: { step: 2, status: 'PENDIENTE_INSCRIPCION' },
+    ASIGNADO_EJECUTIVA: { step: 3, status: 'PENDIENTE_INSCRIPCION' },
+    EN_COORDINACION: { step: 4, status: 'PENDIENTE_INSCRIPCION' },
+    CERTIFICADO_EXISTENTE: { step: 4, status: 'PENDIENTE_INSCRIPCION' },
+    DATOS_INCOMPLETOS: { step: 4, status: 'PENDIENTE_INSCRIPCION' },
+    NO_ES_PROVEEDOR: { step: 4, status: 'PENDIENTE_INSCRIPCION' },
+    NO_UBICADO: { step: 4, status: 'PENDIENTE_INSCRIPCION' },
+    NO_RESPONDE: { step: 4, status: 'PENDIENTE_INSCRIPCION' },
+    DESESTIMADO: { step: 4, status: 'PENDIENTE_INSCRIPCION' },
+    NO_PARTICIPA: { step: 4, status: 'PENDIENTE_INSCRIPCION' },
+    PAGO_CONFIRMADO: { step: 5, status: 'INSCRITO' },
+    FORMULARIO_ENVIADO: { step: 5, status: 'INSCRITO' },
+    FORMULARIO_DEVUELTO: { step: 6, status: 'INSCRITO' },
+    INSPECTOR_ASIGNADO: { step: 7, status: 'INSCRITO' },
+    VISITA_EN_COORDINACION: { step: 7, status: 'INSCRITO' },
+    VISITA_REPROGRAMADA: { step: 7, status: 'INSCRITO' },
+    VISITA_DESESTIMADA: { step: 7, status: 'INSCRITO' },
+    NO_UBICADO_VISITA: { step: 7, status: 'INSCRITO' },
+    VISITA_REALIZADA: { step: 7, status: 'INSCRITO' },
+    PENDIENTE_ENTREGABLES: { step: 8, status: 'INSCRITO' },
+    VIGENTE: { step: 9, status: 'HOMOLOGADO' },
+    POR_VENCER: { step: 9, status: 'HOMOLOGADO' },
+    VENCIDO: { step: 9, status: 'HOMOLOGADO' },
+    LEVANTAMIENTO_OBSERVACIONES: { step: 9, status: 'HOMOLOGADO' },
+};
 export function transitionDefinition(code) {
     return workflowTransitions.find((transition) => transition.code === code);
 }
@@ -72,8 +98,13 @@ export function validateTransition(state, code, role, data = {}) {
     const transition = transitionDefinition(code);
     if (!transition)
         return { ok: false, error: 'La transición no existe.' };
+    const expected = expectedStateBySubstatus[state.substatus];
+    if (!expected || expected.step !== state.step || expected.status !== state.status)
+        return { ok: false, error: 'El estado actual del proveedor no es consistente con el flujo formal.' };
     if (!transition.from.includes(state.substatus))
         return { ok: false, error: `La transición ${code} no está permitida desde ${state.substatus}.` };
+    if (transition.to.step < state.step)
+        return { ok: false, error: 'El proceso no puede retroceder a un paso anterior.' };
     const roles = role === 'sistema' ? ['sistema'] : workflowRolesForUserRole(role);
     if (!transition.roles.some((item) => roles.includes(item)))
         return { ok: false, error: 'Tu rol no puede ejecutar esta transición.' };

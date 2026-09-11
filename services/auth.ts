@@ -5,11 +5,13 @@ export interface DemoUser extends AuthUser { password: string }
 export const demoUsers: DemoUser[] = [
   { id: 'cli-decal', name: 'Cliente DECAL', email: 'cliente@decal.com', password: 'Cliente123', role: 'cliente', empresaIds: ['decal'] },
   { id: 'eje-decal', name: 'Ejecutiva DECAL', email: 'ejecutiva@decal.com', password: 'Ejecutiva123', role: 'ejecutiva', empresaIds: ['decal'] },
+  { id: 'eje-decal-2', name: 'Ejecutiva DECAL 2', email: 'ejecutiva2@decal.com', password: 'Ejecutiva123', role: 'ejecutiva', empresaIds: ['decal'] },
   { id: 'sup-decal', name: 'Supervisor DECAL', email: 'supervisor@decal.com', password: 'Supervisor123', role: 'supervisor_empresa', empresaIds: ['decal'] },
   { id: 'cli-ufitec', name: 'Cliente UFITEC', email: 'cliente@ufitec.com', password: 'Cliente123', role: 'cliente', empresaIds: ['ufitec'] },
   { id: 'eje-ufitec', name: 'Ejecutiva UFITEC', email: 'ejecutiva@ufitec.com', password: 'Ejecutiva123', role: 'ejecutiva', empresaIds: ['ufitec'] },
   { id: 'sup-ufitec', name: 'Supervisor UFITEC', email: 'supervisor@ufitec.com', password: 'Supervisor123', role: 'supervisor_empresa', empresaIds: ['ufitec'] },
   { id: 'supervisor-general', name: 'Carlos Supervisor General', email: 'supervisor@af.com', password: 'super20226ayf', role: 'supervisor_general', empresaIds: [] },
+  { id: 'admin-af', name: 'Administradora A&F', email: 'administradora@af.com', password: 'super20226ayf', role: 'administradora', empresaIds: [] },
 ];
 
 const CUSTOM_USERS_KEY = 'af-custom-users-v1';
@@ -35,6 +37,7 @@ export const routeRoles: Record<string, UserRole[]> = {
   '/homologadas': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
   '/reportes': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
   '/configuracion': ['supervisor_general', 'administradora'],
+  '/carteras': ['supervisor_general', 'administradora'],
   '/profile': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
 };
 

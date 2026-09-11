@@ -1,30 +1,35 @@
+import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../src/auth/AuthContext';
 import { useTenant } from '../../src/tenant/TenantContext';
 import { roleLabels, routeRoles } from '../../services/auth';
+import { features } from '../../services/features';
 
-const menuItems = [
+const menuItems: Array<{ label: string; path: string; hidden?: boolean }> = [
   { label: 'Dashboard', path: '/panel' }, { label: 'Información de proveedores', path: '/panel/proveedores' },
-  { label: 'Estatus de proveedores', path: '/panel/homologaciones' }, { label: 'Empresas homologadas', path: '/panel/homologadas' },
-  { label: 'Reportes', path: '/panel/reportes' }, { label: 'Empresas y procesos', path: '/panel/configuracion' },
+  { label: 'Estatus de proveedores', path: '/panel/homologaciones', hidden: !features.providerStatusTab }, { label: 'Empresas homologadas', path: '/panel/homologadas' },
+  { label: 'Cartera de ejecutivas', path: '/panel/carteras' }, { label: 'Reportes', path: '/panel/reportes' }, { label: 'Empresas y procesos', path: '/panel/configuracion' },
 ];
 
 function MainLayout() {
   const { user, logout } = useAuth();
   const { empresasDisponibles, procesos, selectedEmpresa, selectedProceso, selectEmpresa, selectProceso } = useTenant();
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
   if (!user) return null;
-  const visibleMenuItems = menuItems.filter((item) => routeRoles[item.path.replace('/panel', '') || '/'].includes(user.role));
+  const visibleMenuItems = menuItems.filter((item) => !item.hidden && routeRoles[item.path.replace('/panel', '') || '/'].includes(user.role));
   const procesosEmpresa = procesos.filter((item) => item.empresaId === selectedEmpresa?.id);
 
   const handleLogout = () => { logout(); navigate('/login', { replace: true }); };
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <button type="button" className="sidebar-reveal-zone" aria-label="Mostrar menú lateral" aria-controls="main-sidebar" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><span aria-hidden="true">›</span></button>
+      <aside id="main-sidebar" className={`sidebar${menuOpen ? ' is-open' : ''}`}>
+        <button type="button" className="sidebar-close" aria-label="Contraer menú lateral" onClick={() => setMenuOpen(false)}>×</button>
         <div className="sidebar-brand"><img src="/logo.svg" alt="A&F Homologación" /><p>Plataforma de homologación</p></div>
         <nav className="sidebar-nav" aria-label="Navegación principal">
-          {visibleMenuItems.map((item) => <NavLink key={item.path} to={item.path} end={item.path === '/panel'} className={({ isActive }) => isActive ? 'active' : ''}>{item.label}</NavLink>)}
+          {visibleMenuItems.map((item) => <NavLink key={item.path} to={item.path} end={item.path === '/panel'} onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'active' : ''}>{item.label}</NavLink>)}
         </nav>
       </aside>
       <main className="app-content">

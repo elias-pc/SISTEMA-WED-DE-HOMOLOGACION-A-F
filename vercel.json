@@ -8,6 +8,9 @@
       "maxDuration": 30
     }
   },
+  "crons": [
+    { "path": "/api/cron/certificates", "schedule": "0 8 * * *" }
+  ],
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/index" },
     { "source": "/:path*", "destination": "/index.html" }

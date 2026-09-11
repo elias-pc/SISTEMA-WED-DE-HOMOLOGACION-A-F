@@ -12,6 +12,7 @@ yarn-error.log*
 pnpm-debug.log*
 .pnpm-store/
 .codex-pnpm-store/
+data/uploads/
 
 .DS_Store
 Thumbs.db

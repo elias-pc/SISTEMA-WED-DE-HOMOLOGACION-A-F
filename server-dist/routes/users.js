@@ -3,12 +3,22 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { pool } from '../db/pool.js';
-import { authenticateRequest, requireRoles } from '../middleware/auth.js';
+import { authenticateRequest, canAccessCompany, requireRoles } from '../middleware/auth.js';
 import { validateBody } from '../validation.js';
 export const usersRouter = Router();
-usersRouter.use(authenticateRequest, requireRoles('supervisor_general', 'administradora'));
+usersRouter.use(authenticateRequest);
+usersRouter.get('/', requireRoles('supervisor_general', 'administradora', 'jefe_inspecciones'), async (request, response) => {
+    const companyId = z.string().min(1).safeParse(request.query.empresaId);
+    if (!companyId.success)
+        return response.status(400).json({ error: 'Debes indicar una empresa.' });
+    const user = request.user;
+    if (!canAccessCompany(user, companyId.data))
+        return response.status(403).json({ error: 'Empresa fuera de tu alcance.' });
+    const result = await pool.query(`SELECT u.id,u.name,u.email,u.role FROM users u JOIN user_companies uc ON uc.user_id=u.id WHERE uc.company_id=$1 AND u.active=true ORDER BY u.name`, [companyId.data]);
+    response.json({ users: result.rows.map((row) => ({ ...row, empresaIds: [companyId.data] })) });
+});
 const schema = z.object({ id: z.string().optional(), name: z.string().min(2).max(120), email: z.string().email(), password: z.string().min(8).max(128), role: z.enum(['cliente', 'ejecutiva', 'supervisor_empresa', 'jefe_inspecciones', 'inspector']), empresaIds: z.array(z.string()).min(1) });
-usersRouter.post('/', validateBody(schema), async (request, response) => {
+usersRouter.post('/', requireRoles('supervisor_general', 'administradora'), validateBody(schema), async (request, response) => {
     const b = request.body, id = b.id || randomUUID(), hash = await bcrypt.hash(b.password, 12), client = await pool.connect();
     try {
         await client.query('BEGIN');

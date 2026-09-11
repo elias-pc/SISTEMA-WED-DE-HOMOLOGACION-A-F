@@ -10,6 +10,8 @@ import ConfiguracionPage from '../app/configuracion/ConfiguracionPage';
 import UnauthorizedPage from '../app/unauthorized/UnauthorizedPage';
 import ProtectedRoute from './auth/ProtectedRoute';
 import LandingPage from '../app/landing/LandingPage';
+import CarterasPage from '../app/carteras/CarterasPage';
+import { features } from '../services/features';
 
 function App() {
   return (
@@ -21,10 +23,11 @@ function App() {
           <Route index element={<DashboardPage />} />
           <Route path="proveedores" element={<ProveedoresPage />} />
           <Route path="reportes" element={<ReportesPage />} />
-          <Route path="homologaciones" element={<HomologacionesPage />} />
+          <Route path="homologaciones" element={features.providerStatusTab ? <HomologacionesPage /> : <Navigate to="/panel" replace />} />
           <Route path="homologadas" element={<HomologadasPage />} />
           <Route element={<ProtectedRoute allowedRoles={['supervisor_general', 'administradora']} />}>
             <Route path="configuracion" element={<ConfiguracionPage />} />
+            <Route path="carteras" element={<CarterasPage />} />
           </Route>
           <Route path="sin-permiso" element={<UnauthorizedPage />} />
         </Route>

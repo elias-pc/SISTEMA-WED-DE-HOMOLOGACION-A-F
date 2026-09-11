@@ -1,16 +1,14 @@
 import { useState, type FormEvent } from 'react';
-import { demoUsers } from '../../services/auth';
 import { api } from '../../services/api';
 import { useTenant } from '../../src/tenant/TenantContext';
 import type { Empresa, ProcesoHomologacion } from '../../types';
 
-const initialForm = { razonSocial: '', ruc: '', nombreComercial: '', contacto: '', email: '', telefono: '', nombreProceso: '', codigo: '', fechaInicio: '', fechaLimite: '', ejecutivaId: '', clienteEmail: '', clientePassword: '', supervisorEmail: '', supervisorPassword: '' };
+const initialForm = { razonSocial: '', ruc: '', nombreComercial: '', contacto: '', email: '', telefono: '', nombreProceso: '', codigo: '', fechaInicio: '', fechaLimite: '', clienteEmail: '', clientePassword: '', supervisorEmail: '', supervisorPassword: '' };
 
 function ConfiguracionPage() {
   const { empresas, procesos, createEmpresaConProceso } = useTenant();
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState('');
-  const ejecutivas = demoUsers.filter((item) => item.role === 'ejecutiva');
   const setField = (field: keyof typeof form, value: string) => setForm((current) => ({ ...current, [field]: value }));
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -19,7 +17,7 @@ function ConfiguracionPage() {
     const empresaId = `${form.nombreComercial.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`;
     const procesoId = `proc-${empresaId}`;
     const empresa: Empresa = { id: empresaId, razonSocial: form.razonSocial, ruc: form.ruc, nombreComercial: form.nombreComercial, contacto: form.contacto, email: form.email, telefono: form.telefono, estado: 'Activa' };
-    const proceso: ProcesoHomologacion = { id: procesoId, empresaId, codigo: form.codigo, nombre: form.nombreProceso, fechaInicio: form.fechaInicio, fechaLimite: form.fechaLimite, estado: 'Planificación', ejecutivaId: form.ejecutivaId };
+    const proceso: ProcesoHomologacion = { id: procesoId, empresaId, codigo: form.codigo, nombre: form.nombreProceso, fechaInicio: form.fechaInicio, fechaLimite: form.fechaLimite, estado: 'Planificación' };
     try {
       await createEmpresaConProceso(empresa, proceso);
       await Promise.all([
@@ -46,7 +44,6 @@ function ConfiguracionPage() {
           <label>Teléfono<input value={form.telefono} onChange={(e) => setField('telefono', e.target.value)} required /></label>
           <label>Nombre del proceso<input value={form.nombreProceso} onChange={(e) => setField('nombreProceso', e.target.value)} required /></label>
           <label>Código del proceso<input placeholder="EMPRESA-2026-001" value={form.codigo} onChange={(e) => setField('codigo', e.target.value)} required /></label>
-          <label>Ejecutiva responsable<select value={form.ejecutivaId} onChange={(e) => setField('ejecutivaId', e.target.value)} required><option value="">Seleccionar</option>{ejecutivas.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <label>Fecha de inicio<input type="date" value={form.fechaInicio} onChange={(e) => setField('fechaInicio', e.target.value)} required /></label>
           <label>Fecha límite<input type="date" value={form.fechaLimite} onChange={(e) => setField('fechaLimite', e.target.value)} required /></label>
           <label>Correo del usuario cliente<input type="email" value={form.clienteEmail} onChange={(e) => setField('clienteEmail', e.target.value)} required /></label>

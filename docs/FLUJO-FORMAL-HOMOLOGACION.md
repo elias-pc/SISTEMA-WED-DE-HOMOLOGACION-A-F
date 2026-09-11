@@ -24,6 +24,31 @@ Este documento define el flujo de negocio que debe respetar la API. El estado no
 
 Los subestados detallan la posición exacta y determinan qué transiciones pueden ejecutarse.
 
+## Matriz estricta del paso 4
+
+El paso nunca puede disminuir. Dentro del paso 4 los resultados alternativos tampoco se cambian libremente: cada nuevo intento debe volver primero a `EN_COORDINACION`, lo que deja una evidencia explícita del contacto realizado.
+
+| Subestado actual | Siguientes subestados autorizados | Regla |
+|---|---|---|
+| `ASIGNADO_EJECUTIVA` | `EN_COORDINACION` | La ejecutiva inicia el contacto de un proveedor de su cartera. |
+| `EN_COORDINACION` | `DATOS_INCOMPLETOS`, `NO_ES_PROVEEDOR`, `NO_UBICADO`, `NO_RESPONDE`, `DESESTIMADO`, `NO_PARTICIPA`, `PAGO_CONFIRMADO` o `VIGENTE` | Solo desde coordinación se registra un resultado, un pago o un certificado existente. |
+| `DATOS_INCOMPLETOS` | `EN_COORDINACION` | Se retoma cuando los datos fueron completados. |
+| `NO_UBICADO` | `EN_COORDINACION` | Un nuevo intento de contacto queda registrado. |
+| `NO_RESPONDE` | `EN_COORDINACION` | Un nuevo intento de contacto queda registrado. |
+| `NO_PARTICIPA` | `EN_COORDINACION` | Solo se reactiva mediante una nueva coordinación. |
+| `NO_ES_PROVEEDOR` | Ninguno | Resultado terminal de la inscripción. |
+| `DESESTIMADO` | Ninguno | Resultado terminal de la inscripción. |
+
+No existe una transición directa entre resultados alternativos. Por ejemplo, `NO_RESPONDE → NO_UBICADO` se rechaza; la secuencia válida es `NO_RESPONDE → EN_COORDINACION → NO_UBICADO`.
+
+## Administración de carteras
+
+- La administradora y la supervisora general pueden asignar, repartir, reasignar y retirar proveedores.
+- La ejecutiva no puede autoasignarse y solo puede consultar o modificar proveedores cuya asignación activa le pertenece.
+- La primera asignación mueve un proveedor `REGISTRADO` del paso 2 al paso 3 `ASIGNADO_EJECUTIVA`.
+- Una reasignación o retiro posterior no disminuye ni reinicia el paso del flujo.
+- Al retirar una asignación, el proveedor queda sin ejecutiva activa; los intervalos anteriores permanecen en `provider_assignments` con responsable, motivo y fechas.
+
 ## Transiciones
 
 | Transición | Rol | Cambio principal |

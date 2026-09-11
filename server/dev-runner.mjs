@@ -1,13 +1,10 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { resolve } from 'node:path';
 
 const isWindows = process.platform === 'win32';
-const command = isWindows ? (process.env.ComSpec || 'cmd.exe') : 'npm';
-const commandArgs = (script) => isWindows
-  ? ['/d', '/s', '/c', `npm.cmd run ${script}`]
-  : ['run', script];
 const children = [
-  spawn(command, commandArgs('dev:server'), { stdio: 'inherit' }),
-  spawn(command, commandArgs('dev:web'), { stdio: 'inherit' }),
+  spawn(process.execPath, [resolve('server-dist/index.js')], { stdio: 'inherit' }),
+  spawn(process.execPath, [resolve('node_modules/vite/bin/vite.js')], { stdio: 'inherit' }),
 ];
 
 let stopping = false;

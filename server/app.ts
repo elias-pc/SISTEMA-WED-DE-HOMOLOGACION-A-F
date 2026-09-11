@@ -8,6 +8,9 @@ import { companiesRouter } from './routes/companies.js';
 import { processesRouter } from './routes/processes.js';
 import { providersRouter } from './routes/providers.js';
 import { usersRouter } from './routes/users.js';
+import { reportsRouter } from './routes/reports.js';
+import { assignmentsRouter } from './routes/assignments.js';
+import { cronRouter } from './routes/cron.js';
 import { memoryRouter } from './dev-memory.js';
 import { pool } from './db/pool.js';
 
@@ -39,11 +42,16 @@ app.use('/api/companies',companiesRouter);
 app.use('/api/processes',processesRouter);
 app.use('/api/providers',providersRouter);
 app.use('/api/users',usersRouter);
+app.use('/api/reports',reportsRouter);
+app.use('/api/assignments',assignmentsRouter);
+app.use('/api/cron',cronRouter);
 app.use('/api',(_request,response)=>response.status(404).json({error:'Ruta no encontrada.'}));
 const errorHandler:ErrorRequestHandler=(error,_request,response,_next)=>{
  console.error(error);
  if((error as {code?:string}).code==='23505')return response.status(409).json({error:'Ya existe un registro con esos datos.'});
  if((error as {code?:string}).code==='23503')return response.status(400).json({error:'El registro relacionado no existe.'});
+ const statusCode=(error as {statusCode?:number}).statusCode;
+ if(statusCode&&statusCode>=400&&statusCode<500)return response.status(statusCode).json({error:error instanceof Error?error.message:'No se pudo completar la solicitud.'});
  response.status(500).json({error:'Ocurrió un error interno.'});
 };
 app.use(errorHandler);

@@ -12,6 +12,7 @@ if (!demoPassword || !supervisorPassword) {
 const users = [
  ['cli-decal','Cliente DECAL','cliente@decal.com',demoPassword,'cliente','decal'],
  ['eje-decal','Ejecutiva DECAL','ejecutiva@decal.com',demoPassword,'ejecutiva','decal'],
+ ['eje-decal-2','Ejecutiva DECAL 2','ejecutiva2@decal.com',demoPassword,'ejecutiva','decal'],
  ['sup-decal','Supervisor DECAL','supervisor@decal.com',demoPassword,'supervisor_empresa','decal'],
  ['cli-ufitec','Cliente UFITEC','cliente@ufitec.com',demoPassword,'cliente','ufitec'],
  ['eje-ufitec','Ejecutiva UFITEC','ejecutiva@ufitec.com',demoPassword,'ejecutiva','ufitec'],

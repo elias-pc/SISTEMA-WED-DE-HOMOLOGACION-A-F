@@ -1,12 +1,10 @@
-import type { EstadoSeguimiento, Proveedor, UserRole } from '../../types';
-import { estadoSeguimientoActual, estadosEjecutiva, estadosSupervisor } from '../../services/providerWorkflow';
+import type { Proveedor } from '../../types';
+import { estadoSeguimientoActual } from '../../services/providerWorkflow';
 import Badge from '../shared/Badge';
 
 interface Props {
   proveedores: Proveedor[];
-  role?: UserRole;
-  canEdit: boolean;
-  onStatusChange: (id: string, estado: EstadoSeguimiento) => void;
+  onSelect: (provider: Proveedor) => void;
 }
 
 function estadoVariant(estado: string) {
@@ -15,16 +13,13 @@ function estadoVariant(estado: string) {
   return 'warning';
 }
 
-function ProveedoresTable({ proveedores, role, canEdit, onStatusChange }: Props) {
-  const esEjecutiva = role === 'ejecutiva';
-  const opciones: EstadoSeguimiento[] = esEjecutiva ? estadosEjecutiva : estadosSupervisor;
-
+function ProveedoresTable({ proveedores, onSelect }: Props) {
   return (
     <div style={{ overflowX: 'auto', marginTop: '1.5rem' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
         <thead>
           <tr>
-            {['R.U.C', 'Razón social', 'Persona de contacto', 'Teléfonos', 'E-mail', 'Dirección', 'Departamento', 'Distrito', 'Actividad principal', 'Estado'].map((header) => (
+            {['R.U.C', 'Razón social', 'Contacto', 'Teléfonos', 'E-mail', 'Distrito', 'Estado formal', 'Acción'].map((header) => (
               <th key={header} style={{ textAlign: 'left', padding: '1rem 0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{header}</th>
             ))}
           </tr>
@@ -32,7 +27,6 @@ function ProveedoresTable({ proveedores, role, canEdit, onStatusChange }: Props)
         <tbody>
           {proveedores.map((proveedor) => {
             const estadoActual = proveedor.flujo?.subestado || estadoSeguimientoActual(proveedor);
-            const valorRol = esEjecutiva ? proveedor.estadoEjecutiva : proveedor.estadoSupervisor;
             return (
               <tr key={proveedor.id} style={{ borderTop: '1px solid var(--color-border)' }}>
                 <td style={{ padding: '1rem 0.75rem' }}>{proveedor.ruc}</td>
@@ -40,22 +34,16 @@ function ProveedoresTable({ proveedores, role, canEdit, onStatusChange }: Props)
                 <td style={{ padding: '1rem 0.75rem' }}>{proveedor.personaContacto}</td>
                 <td style={{ padding: '1rem 0.75rem' }}>{proveedor.telefonos}</td>
                 <td style={{ padding: '1rem 0.75rem' }}>{proveedor.email}</td>
-                <td style={{ padding: '1rem 0.75rem' }}>{proveedor.direccion}</td>
-                <td style={{ padding: '1rem 0.75rem' }}>{proveedor.departamento}</td>
                 <td style={{ padding: '1rem 0.75rem' }}>{proveedor.distrito}</td>
-                <td style={{ padding: '1rem 0.75rem' }}>{proveedor.actividadPrincipal}</td>
                 <td style={{ padding: '1rem 0.75rem' }}>
                   {proveedor.flujo ? (
                     <div style={{ display: 'grid', gap: '0.35rem' }}>
                       <Badge variant={estadoVariant(estadoActual)}>{estadoActual.split('_').join(' ')}</Badge>
                       <small className="secondary-text">Paso {proveedor.flujo.paso} · v{proveedor.flujo.version}</small>
                     </div>
-                  ) : canEdit ? (
-                    <select aria-label={`Estado de ${proveedor.razonSocial}`} value={valorRol || opciones[0]} onChange={(event) => onStatusChange(proveedor.id, event.target.value as EstadoSeguimiento)}>
-                      {opciones.map((estado) => <option key={estado}>{estado}</option>)}
-                    </select>
                   ) : <Badge variant={estadoVariant(estadoActual)}>{estadoActual}</Badge>}
                 </td>
+                <td style={{ padding: '1rem 0.75rem' }}><button type="button" className="btn-secondary table-action" onClick={() => onSelect(proveedor)}>Abrir expediente</button></td>
               </tr>
             );
           })}
