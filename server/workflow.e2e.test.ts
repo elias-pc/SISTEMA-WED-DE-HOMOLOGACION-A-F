@@ -47,6 +47,14 @@ describe('flujo formal por API en entorno local temporal', () => {
     expect(finalWorkflow.body.provider.flujo).toMatchObject({ paso: 9, estado: 'HOMOLOGADO', subestado: 'VIGENTE', version: 10 });
     expect(finalWorkflow.body.historial).toHaveLength(10);
 
+    const status = await ejecutiva.get('/api/reports/status').query({ processId: 'proc-decal-2026' });
+    const reportRow = status.body.rows.find((row: { id: string }) => row.id === providerId);
+    expect(reportRow).toMatchObject({
+      ruc: '20987654321', tipoDocumento: 'Certificado', estado: 'HOMOLOGADO', subestado: 'VIGENTE',
+      dictamen: 'Conforme', puntajeFinalPonderado: 95, fechaEmision: '2026-09-11', fechaVencimiento: '2027-09-11',
+    });
+    expect(reportRow.diasPorVencer).toEqual(expect.any(Number));
+
     const staleUpdate = await ejecutiva.post(`/api/providers/${providerId}/transitions`).send({
       transicion: 'INICIAR_OBSERVACIONES', datos: { motivo: 'Prueba de concurrencia' }, version: 9,
     });

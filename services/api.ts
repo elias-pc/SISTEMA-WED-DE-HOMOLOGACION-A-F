@@ -1,4 +1,4 @@
-import type { AuthUser, DashboardResumen, Empresa, EstadoSeguimiento, ExpedienteProveedor, HistorialFlujo, ImportPreview, ProcesoHomologacion, Proveedor, ReporteOperativo, ReporteProductividad, ResumenCartera, ResultadoAsignacion, TransicionDisponible } from '../types';
+import type { AuthUser, DashboardResumen, Empresa, EstadoSeguimiento, ExpedienteProveedor, HistorialFlujo, ImportPreview, ProcesoHomologacion, Proveedor, ReporteEstadoProveedores, ReporteOperativo, ReporteProductividad, ResumenCartera, ResultadoAsignacion, TransicionDisponible } from '../types';
 
 export class ApiError extends Error { constructor(message:string,public status:number){super(message)} }
 async function request<T>(path:string,options:RequestInit={}):Promise<T>{
@@ -27,6 +27,7 @@ export const api={
   importProviders:(payload:{empresaId:string;procesoId:string;fileName:string;contentBase64:string})=>request<ImportPreview>('/providers/import',{method:'POST',body:JSON.stringify(payload)}),
   users:(empresaId:string)=>request<{users:AuthUser[]}>(`/users?empresaId=${encodeURIComponent(empresaId)}`),
   dashboardReport:(processId:string)=>request<DashboardResumen>(`/reports/dashboard?processId=${encodeURIComponent(processId)}`),
+  providerStatusReport:(processId:string)=>request<ReporteEstadoProveedores>(`/reports/status?processId=${encodeURIComponent(processId)}`),
   operationalReport:(processId:string,type:'directorio'|'facturacion'|'homologados'|'inspecciones'|'trazabilidad')=>request<ReporteOperativo>(`/reports/operational?processId=${encodeURIComponent(processId)}&type=${encodeURIComponent(type)}`),
   productivityReport:(processId:string,from:string,to:string)=>request<ReporteProductividad>(`/reports/productivity?processId=${encodeURIComponent(processId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   portfolio:(processId:string)=>request<ResumenCartera>(`/assignments/portfolio?processId=${encodeURIComponent(processId)}`),

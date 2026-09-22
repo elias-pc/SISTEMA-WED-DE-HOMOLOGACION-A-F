@@ -24,11 +24,16 @@ describe('expediente operativo en modo local', () => {
     expect((await transition(executive, 'INICIAR_COORDINACION', {})).status).toBe(200);
     expect((await transition(executive, 'REGISTRAR_PAGO', { banco: 'BCP', monto: 250, modalidad: 'Transferencia', fechaPago: '2026-09-03', numeroOperacion: 'OP-LOCAL-1', numeroFactura: 'F001-LOCAL' })).status).toBe(200);
     expect((await executive.put(`/api/providers/${providerId}/contact-preferences`).send({ whatsappPhone: '51999888777', whatsappOptIn: true, whatsappOptInSource: 'Formulario firmado' })).status).toBe(200);
+    expect((await executive.post(`/api/providers/${providerId}/documents`).send({ category: 'Informe', originalName: 'informe-local.txt', mimeType: 'text/plain', contentBase64: Buffer.from('Contenido de prueba').toString('base64') })).status).toBe(201);
 
     const dossier = await executive.get(`/api/providers/${providerId}/dossier`);
     expect(dossier.status).toBe(200);
     expect(dossier.body.payments).toHaveLength(1);
     expect(dossier.body.contactPreferences).toMatchObject({ whatsapp_phone: '51999888777', whatsapp_opt_in: true });
     expect(dossier.body.notifications).toEqual(expect.arrayContaining([expect.objectContaining({ template_code: 'INVITACION_INICIAL', status: 'OMITIDA' })]));
+
+    const status = await executive.get('/api/reports/status').query({ processId: 'proc-decal-2026' });
+    const reportRow = status.body.rows.find((row: { id: string }) => row.id === providerId);
+    expect(reportRow.documentosEntregables).toEqual([expect.objectContaining({ originalName: 'informe-local.txt', mimeType: 'text/plain' })]);
   });
 });

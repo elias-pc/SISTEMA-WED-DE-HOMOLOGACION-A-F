@@ -30,12 +30,47 @@ reportsRouter.get('/dashboard', async (request, response) => {
       COUNT(*) FILTER (WHERE workflow_status='INSCRITO')::int AS inscritos,
       COUNT(*) FILTER (WHERE workflow_status='PENDIENTE_INSCRIPCION')::int AS pendientes,
       COUNT(*) FILTER (WHERE workflow_substatus IN ('NO_RESPONDE','NO_UBICADO','NO_UBICADO_VISITA'))::int AS sin_respuesta,
-      COUNT(*) FILTER (WHERE workflow_substatus IN ('NO_PARTICIPA','DESESTIMADO','VISITA_DESESTIMADA'))::int AS no_participan
+      COUNT(*) FILTER (WHERE workflow_substatus='NO_PARTICIPA')::int AS no_participan,
+      COUNT(*) FILTER (WHERE workflow_substatus='DATOS_INCOMPLETOS')::int AS datos_incompletos,
+      COUNT(*) FILTER (WHERE workflow_substatus IN ('DESESTIMADO','VISITA_DESESTIMADA'))::int AS desestimados,
+      COUNT(*) FILTER (WHERE workflow_substatus='NO_ES_PROVEEDOR')::int AS no_son_proveedores
       FROM providers p WHERE process_id=$1 AND ($2::text IS NULL OR p.assigned_executive_id=$2)`, [parsed.data, executiveId]),
     pool.query(`SELECT COUNT(*) FILTER (WHERE expires_on BETWEEN current_date AND current_date + 45)::int AS por_vencer,
       COUNT(*) FILTER (WHERE expires_on < current_date)::int AS vencidos FROM provider_certificates c JOIN providers p ON p.id=c.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR p.assigned_executive_id=$2)`, [parsed.data, executiveId]),
   ]);
   response.json({ ...counts.rows[0], ...certificates.rows[0] });
+});
+
+reportsRouter.get('/status', async (request, response) => {
+  const processId = z.string().min(1).safeParse(request.query.processId);
+  if (!processId.success) return response.status(400).json({ error: 'Debes indicar un proceso.' });
+  const authenticated = request as AuthenticatedRequest;
+  const scope = await scopedProcess(authenticated, processId.data);
+  if ('error' in scope) return response.status(scope.error === 'Proceso no encontrado.' ? 404 : 403).json(scope);
+  const executiveId = authenticated.user.role === 'ejecutiva' ? authenticated.user.id : null;
+  const inspectorId = authenticated.user.role === 'inspector' ? authenticated.user.id : null;
+  const result = await pool.query(`
+    SELECT p.id,p.tax_id AS "ruc",p.legal_name AS "razonSocial",
+      COALESCE(certificate.document_type,documents.document_types,'') AS "tipoDocumento",
+      COALESCE(filter_one.attribute_value,'') AS "filtro1",
+      p.workflow_status AS "estado",p.workflow_substatus AS "subestado",
+      COALESCE(certificate.opinion,'') AS "dictamen",certificate.score::float8 AS "puntajeFinalPonderado",
+      certificate.issued_on::text AS "fechaEmision",certificate.expires_on::text AS "fechaVencimiento",
+      CASE WHEN certificate.expires_on IS NULL THEN NULL ELSE (certificate.expires_on-current_date)::int END AS "diasPorVencer",
+      CONCAT_WS(', ',NULLIF(documents.deliverables,''),NULLIF(certificate.document_type,'')) AS "entregables",
+      documents.deliverable_documents AS "documentosEntregables"
+    FROM providers p
+    LEFT JOIN LATERAL (SELECT attribute_value FROM provider_attributes WHERE provider_id=p.id AND attribute_key='filtro_1' LIMIT 1) filter_one ON true
+    LEFT JOIN LATERAL (SELECT document_type,opinion,score,issued_on,expires_on FROM provider_certificates WHERE provider_id=p.id ORDER BY expires_on DESC,created_at DESC LIMIT 1) certificate ON true
+    LEFT JOIN LATERAL (
+      SELECT string_agg(category,', ' ORDER BY created_at DESC) AS document_types,
+        string_agg(original_name,', ' ORDER BY created_at DESC) AS deliverables,
+        COALESCE(json_agg(json_build_object('id',id,'originalName',original_name,'mimeType',mime_type,'byteSize',byte_size) ORDER BY created_at DESC),'[]'::json) AS deliverable_documents
+      FROM provider_documents WHERE provider_id=p.id
+    ) documents ON true
+    WHERE p.process_id=$1 AND ($2::text IS NULL OR p.assigned_executive_id=$2) AND ($3::text IS NULL OR p.assigned_inspector_id=$3)
+    ORDER BY p.legal_name`, [processId.data, executiveId, inspectorId]);
+  response.json({ rows: result.rows });
 });
 
 const reportType = z.enum(['directorio', 'facturacion', 'homologados', 'inspecciones', 'trazabilidad']);

@@ -67,8 +67,45 @@ export interface ExpedienteProveedor {
 
 export interface ImportPreviewRow { rowNumber:number; errors:string[]; provider?: Partial<Proveedor> }
 export interface ImportPreview { summary:{totalRows:number;readyRows:number;rejectedRows:number}; rows:ImportPreviewRow[]; batchId?:string }
-export interface DashboardResumen { total:number; homologados:number; inscritos:number; pendientes:number; sin_respuesta:number; no_participan:number; por_vencer:number; vencidos:number }
+export interface DashboardResumen {
+  total:number;
+  homologados:number;
+  inscritos:number;
+  pendientes:number;
+  sin_respuesta:number;
+  no_participan:number;
+  datos_incompletos:number;
+  desestimados:number;
+  no_son_proveedores:number;
+  por_vencer:number;
+  vencidos:number;
+}
 export interface ReporteOperativo { type:string; columns:string[]; rows:unknown[][] }
+
+export interface DocumentoEntregable {
+  id:string;
+  originalName:string;
+  mimeType:string;
+  byteSize:number;
+}
+
+export interface EstadoProveedorReporte {
+  id:string;
+  ruc:string;
+  razonSocial:string;
+  tipoDocumento:string;
+  filtro1:string;
+  estado:string;
+  subestado:string;
+  dictamen:string;
+  puntajeFinalPonderado:number|null;
+  fechaEmision:string|null;
+  fechaVencimiento:string|null;
+  diasPorVencer:number|null;
+  entregables:string;
+  documentosEntregables:DocumentoEntregable[];
+}
+export interface ReporteEstadoProveedores { rows:EstadoProveedorReporte[] }
 
 export interface CarteraEjecutivaResumen { id:string; name:string; email:string; activeCount:number }
 export interface ProveedorCartera {

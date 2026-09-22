@@ -22,9 +22,11 @@ function App() {
         <Route path="/panel" element={<MainLayout />}>
           <Route index element={<DashboardPage />} />
           <Route path="proveedores" element={<ProveedoresPage />} />
-          <Route path="reportes" element={<ReportesPage />} />
           <Route path="homologaciones" element={features.providerStatusTab ? <HomologacionesPage /> : <Navigate to="/panel" replace />} />
-          <Route path="homologadas" element={<HomologadasPage />} />
+          <Route element={<ProtectedRoute allowedRoles={['ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector']} />}>
+            <Route path="reportes" element={<ReportesPage />} />
+            <Route path="homologadas" element={<HomologadasPage />} />
+          </Route>
           <Route element={<ProtectedRoute allowedRoles={['supervisor_general', 'administradora']} />}>
             <Route path="configuracion" element={<ConfiguracionPage />} />
             <Route path="carteras" element={<CarterasPage />} />

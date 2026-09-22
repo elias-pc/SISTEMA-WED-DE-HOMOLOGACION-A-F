@@ -6,6 +6,10 @@ loadEnv({ path: '.env.development.local' });
 loadEnv({ path: '.env.local' });
 loadEnv();
 
+// Las pruebas deben permanecer aisladas incluso cuando el desarrollador tiene
+// una DATABASE_URL real configurada en su equipo.
+const isTest = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+
 const deployedOrigins = [
   process.env.APP_ORIGIN,
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
@@ -19,7 +23,7 @@ export const config = {
   appOrigin: process.env.APP_ORIGIN || 'http://localhost:4173',
   isProduction: process.env.NODE_ENV === 'production',
   sessionTtlHours: Number(process.env.SESSION_TTL_HOURS || 12),
-  useMemoryDatabase: !process.env.DATABASE_URL && process.env.NODE_ENV !== 'production',
+  useMemoryDatabase: isTest || (!process.env.DATABASE_URL && process.env.NODE_ENV !== 'production'),
   documentStorageDriver: process.env.DOCUMENT_STORAGE_DRIVER || 'local',
   documentStoragePath: process.env.DOCUMENT_STORAGE_PATH || './data/uploads',
   notificationsProvider: process.env.NOTIFICATIONS_PROVIDER || 'disabled',
