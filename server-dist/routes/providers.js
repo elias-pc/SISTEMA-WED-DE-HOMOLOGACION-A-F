@@ -6,7 +6,7 @@ import { authenticateRequest, canAccessCompany, requireRoles } from '../middlewa
 import { mapProvider } from '../mappers.js';
 import { validateBody } from '../validation.js';
 import { availableTransitions, legacyProviderStatus, transitionCodes, validateTransition, } from '../workflow.js';
-import { readLocalDocument, storeLocalDocument } from '../document-storage.js';
+import { confirmDocumentUpload, createDocumentUpload, readDocument, storeDocument } from '../document-storage.js';
 import { persistTransitionRecords, providerDossier } from '../provider-records.js';
 import { parseProviderWorkbook } from '../provider-import.js';
 export const providersRouter = Router();
@@ -153,13 +153,15 @@ providersRouter.get('/:id/dossier', async (request, response) => {
         return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' });
     response.json(await providerDossier(pool, request.params.id));
 });
-const documentSchema = z.object({
+const documentMetadataSchema = z.object({
     category: z.string().trim().min(2).max(80),
     originalName: z.string().trim().min(1).max(180),
     mimeType: z.string().trim().min(3).max(120),
-    contentBase64: z.string().min(4),
     expiresOn: z.string().date().optional(),
 });
+const documentSchema = documentMetadataSchema.extend({ contentBase64: z.string().min(4) });
+const documentUploadSchema = documentMetadataSchema.extend({ byteSize: z.number().int().min(1).max(5 * 1024 * 1024) });
+const documentCompleteSchema = documentMetadataSchema.extend({ documentId: z.string().uuid(), storageKey: z.string().min(1).max(500) });
 providersRouter.post('/:id/documents', validateBody(documentSchema), async (request, response) => {
     const user = request.user;
     const found = await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`, [request.params.id]);
@@ -169,13 +171,52 @@ providersRouter.post('/:id/documents', validateBody(documentSchema), async (requ
         return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' });
     const body = request.body;
     try {
-        const stored = await storeLocalDocument(String(request.params.id), body.originalName, body.contentBase64);
+        const stored = await storeDocument(String(request.params.id), body.originalName, body.mimeType, body.contentBase64);
         const result = await pool.query(`INSERT INTO provider_documents(id,provider_id,category,original_name,mime_type,byte_size,storage_driver,storage_key,uploaded_by_user_id,expires_on)
    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::date) RETURNING id,category,original_name,mime_type,byte_size,expires_on,created_at`, [randomUUID(), request.params.id, body.category, body.originalName, body.mimeType, stored.byteSize, stored.storageDriver, stored.storageKey, user.id, body.expiresOn || null]);
         response.status(201).json({ document: result.rows[0] });
     }
     catch (error) {
         response.status(422).json({ error: error instanceof Error ? error.message : 'No se pudo registrar el documento.' });
+    }
+});
+providersRouter.post('/:id/documents/upload-url', validateBody(documentUploadSchema), async (request, response) => {
+    const user = request.user;
+    const found = await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`, [request.params.id]);
+    if (!found.rowCount)
+        return response.status(404).json({ error: 'Proveedor no encontrado.' });
+    if (!canAccessProvider(user, found.rows[0]))
+        return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' });
+    try {
+        const body = request.body;
+        const prepared = await createDocumentUpload(String(request.params.id), body.originalName, body.mimeType, body.byteSize);
+        if (!prepared)
+            return response.json({ mode: 'server' });
+        response.status(201).json({ mode: 'neon-s3', ...prepared });
+    }
+    catch (error) {
+        response.status(422).json({ error: error instanceof Error ? error.message : 'No se pudo preparar la carga del documento.' });
+    }
+});
+providersRouter.post('/:id/documents/complete', validateBody(documentCompleteSchema), async (request, response) => {
+    const user = request.user;
+    const found = await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`, [request.params.id]);
+    if (!found.rowCount)
+        return response.status(404).json({ error: 'Proveedor no encontrado.' });
+    if (!canAccessProvider(user, found.rows[0]))
+        return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' });
+    const body = request.body;
+    const expectedPrefix = `providers/${request.params.id}/${body.documentId}-`;
+    if (!body.storageKey.startsWith(expectedPrefix))
+        return response.status(422).json({ error: 'La carga no corresponde al proveedor seleccionado.' });
+    try {
+        const uploaded = await confirmDocumentUpload(body.storageKey);
+        const result = await pool.query(`INSERT INTO provider_documents(id,provider_id,category,original_name,mime_type,byte_size,storage_driver,storage_key,uploaded_by_user_id,expires_on)
+   VALUES($1,$2,$3,$4,$5,$6,'neon-s3',$7,$8,$9::date) RETURNING id,category,original_name,mime_type,byte_size,expires_on,created_at`, [body.documentId, request.params.id, body.category, body.originalName, uploaded.mimeType, uploaded.byteSize, body.storageKey, user.id, body.expiresOn || null]);
+        response.status(201).json({ document: result.rows[0] });
+    }
+    catch (error) {
+        response.status(422).json({ error: error instanceof Error ? error.message : 'No se pudo confirmar la carga del documento.' });
     }
 });
 providersRouter.get('/:id/documents/:documentId/content', async (request, response) => {
@@ -188,14 +229,12 @@ providersRouter.get('/:id/documents/:documentId/content', async (request, respon
     const document = await pool.query(`SELECT original_name,mime_type,storage_driver,storage_key FROM provider_documents WHERE id=$1 AND provider_id=$2`, [request.params.documentId, request.params.id]);
     if (!document.rowCount)
         return response.status(404).json({ error: 'Documento no encontrado.' });
-    if (document.rows[0].storage_driver !== 'local')
-        return response.status(501).json({ error: 'El controlador de almacenamiento no está disponible.' });
     try {
-        const content = await readLocalDocument(document.rows[0].storage_key);
+        const content = await readDocument(document.rows[0].storage_driver, document.rows[0].storage_key);
         response.type(document.rows[0].mime_type).setHeader('Content-Disposition', `inline; filename="${String(document.rows[0].original_name).replace(/"/g, '')}"`).send(content);
     }
     catch {
-        response.status(404).json({ error: 'El archivo local ya no está disponible.' });
+        response.status(404).json({ error: 'El archivo ya no está disponible.' });
     }
 });
 const contactPreferencesSchema = z.object({ whatsappPhone: z.string().trim().min(7).max(32).optional(), whatsappOptIn: z.boolean(), whatsappOptInSource: z.string().trim().min(3).max(120).optional() });
