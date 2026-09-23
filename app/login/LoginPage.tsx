@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../src/auth/AuthContext';
-import { demoUsers, roleLabels } from '../../services/auth';
 
 function LoginPage() {
   const { user, login, loading } = useAuth();
@@ -28,12 +27,6 @@ function LoginPage() {
     }
     const requestedPath = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
     navigate(requestedPath || '/panel', { replace: true });
-  };
-
-  const useDemoAccount = (demoEmail: string, demoPassword: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setError('');
   };
 
   return (
@@ -63,16 +56,6 @@ function LoginPage() {
           {error ? <p className="form-error" role="alert">{error}</p> : null}
           <button type="submit" className="btn-primary login-submit" disabled={!email || !password || submitting}>{submitting ? 'Ingresando...' : 'Ingresar'}</button>
         </form>
-
-        <div className="demo-accounts">
-          <p>Accesos de demostración</p>
-          {demoUsers.map((demoUser) => (
-            <button key={demoUser.id} type="button" onClick={() => useDemoAccount(demoUser.email, demoUser.password)}>
-              <span>{roleLabels[demoUser.role]}</span>
-              <small>{demoUser.email}</small>
-            </button>
-          ))}
-        </div>
       </section>
     </main>
   );

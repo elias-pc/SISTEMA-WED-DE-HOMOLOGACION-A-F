@@ -20,3 +20,4 @@ Thumbs.db
 .vercel
 .neon
 .neon-production.env
+.neon-audit.env
