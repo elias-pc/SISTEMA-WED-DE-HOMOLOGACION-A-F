@@ -7,6 +7,7 @@ import { features } from '../../services/features';
 
 const menuItems: Array<{ label: string; path: string; hidden?: boolean }> = [
   { label: 'Dashboard', path: '/panel' }, { label: 'Información de proveedores', path: '/panel/proveedores' },
+  { label: 'Mi cartera', path: '/panel/mi-cartera' },
   { label: 'Estatus de proveedores', path: '/panel/homologaciones', hidden: !features.providerStatusTab }, { label: 'Empresas homologadas', path: '/panel/homologadas' },
   { label: 'Cartera de ejecutivas', path: '/panel/carteras' }, { label: 'Reportes', path: '/panel/reportes' }, { label: 'Empresas y procesos', path: '/panel/configuracion' },
 ];

@@ -13,8 +13,9 @@ export async function persistTransitionRecords(
 ) {
   const { providerId, transition, data, actorUserId } = input;
   if (transition === 'ASIGNAR_EJECUTIVA') {
-    await client.query(`UPDATE provider_assignments SET released_at=now() WHERE provider_id=$1 AND assignment_role='ejecutiva' AND released_at IS NULL`, [providerId]);
-    await client.query(`INSERT INTO provider_assignments(id,provider_id,assignment_role,assigned_user_id,assigned_by_user_id,reason) VALUES($1,$2,'ejecutiva',$3,$4,$5)`, [randomUUID(), providerId, text(data.ejecutivaId), actorUserId, text(data.motivo) || null]);
+    const executiveId = text(data.ejecutivaId);
+    const existing = await client.query(`SELECT 1 FROM provider_assignments WHERE provider_id=$1 AND assignment_role='ejecutiva' AND assigned_user_id=$2 AND released_at IS NULL`, [providerId, executiveId]);
+    if (!existing.rowCount) await client.query(`INSERT INTO provider_assignments(id,provider_id,assignment_role,assigned_user_id,assigned_by_user_id,reason) VALUES($1,$2,'ejecutiva',$3,$4,$5)`, [randomUUID(), providerId, executiveId, actorUserId, text(data.motivo) || null]);
   }
   if (transition === 'ASIGNAR_INSPECTOR' || transition === 'RETOMAR_VISITA') {
     await client.query(`UPDATE provider_assignments SET released_at=now() WHERE provider_id=$1 AND assignment_role='inspector' AND released_at IS NULL`, [providerId]);

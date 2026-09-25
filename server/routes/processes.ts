@@ -13,7 +13,10 @@ processesRouter.get('/', async (request,response)=>{
  const result=user.role==='supervisor_general'||user.role==='administradora'
   ? await pool.query('SELECT * FROM homologation_processes ORDER BY start_date DESC')
   : user.role==='ejecutiva'
-   ? await pool.query('SELECT DISTINCT h.* FROM homologation_processes h JOIN providers p ON p.process_id=h.id AND p.assigned_executive_id=$1 ORDER BY h.start_date DESC',[user.id])
+   ? await pool.query(`SELECT DISTINCT h.* FROM homologation_processes h
+      JOIN providers p ON p.process_id=h.id
+      JOIN provider_assignments a ON a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$1 AND a.released_at IS NULL
+      ORDER BY h.start_date DESC`,[user.id])
    : await pool.query('SELECT * FROM homologation_processes WHERE company_id=ANY($1::text[]) ORDER BY start_date DESC',[user.empresaIds]);
  response.json({ processes: result.rows.map(mapProcess) });
 });

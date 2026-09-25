@@ -14,6 +14,7 @@ import {
 import { confirmDocumentUpload, createDocumentUpload, readDocument, storeDocument } from '../document-storage.js';
 import { persistTransitionRecords, providerDossier } from '../provider-records.js';
 import { parseProviderWorkbook, type ImportedProviderRow } from '../provider-import.js';
+import { buildMyPortfolio } from '../my-portfolio.js';
 
 export const providersRouter = Router();
 providersRouter.use(authenticateRequest);
@@ -27,7 +28,8 @@ providersRouter.get('/',async(request,response)=>{
  const scope=process.rows[0];
  if(!canAccessCompany(user,scope.company_id))return response.status(403).json({error:'Proceso fuera de tu alcance.'});
  const result=await pool.query('SELECT * FROM providers WHERE process_id=$1 ORDER BY created_at DESC',[processId.data]);
- const visibleRows=result.rows.filter((row)=>canAccessProvider(user,row));
+ const permissionChecks=await Promise.all(result.rows.map(async(row)=>({row,allowed:await canAccessProvider(user,row)})));
+ const visibleRows=permissionChecks.filter((item)=>item.allowed).map((item)=>item.row);
  response.json({providers:visibleRows.map((row)=>{
   const provider=mapProvider(row);
   const state=workflowStateFromRow(row);
@@ -126,7 +128,7 @@ providersRouter.get('/:id/workflow',async(request,response)=>{
  const found=await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`,[request.params.id]);
  if(!found.rowCount)return response.status(404).json({error:'Proveedor no encontrado.'});
  const row=found.rows[0];
- if(!canAccessProvider(user,row))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
+ if(!await canAccessProvider(user,row))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
  const history=await pool.query(`SELECT id,transition_code,from_step,from_status,from_substatus,to_step,to_status,to_substatus,actor_user_id,actor_role,reason,metadata,created_at FROM provider_status_history WHERE provider_id=$1 ORDER BY created_at DESC`,[request.params.id]);
  const state=workflowStateFromRow(row);
  response.json({provider:mapProvider(row),transicionesDisponibles:availableTransitions(state,user.role).map(publicTransition),historial:history.rows});
@@ -136,7 +138,7 @@ providersRouter.get('/:id/dossier',async(request,response)=>{
  const user=(request as unknown as AuthenticatedRequest).user;
  const found=await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`,[request.params.id]);
  if(!found.rowCount)return response.status(404).json({error:'Proveedor no encontrado.'});
- if(!canAccessProvider(user,found.rows[0]))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
+ if(!await canAccessProvider(user,found.rows[0]))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
  response.json(await providerDossier(pool,request.params.id));
 });
 
@@ -146,6 +148,27 @@ const documentMetadataSchema=z.object({
  mimeType:z.string().trim().min(3).max(120),
  expiresOn:z.string().date().optional(),
 });
+
+providersRouter.get('/my-portfolio',requireRoles('ejecutiva'),async(request,response)=>{
+ const user=(request as AuthenticatedRequest).user;
+ const processId=z.string().min(1).safeParse(request.query.processId);
+ if(!processId.success)return response.status(400).json({error:'Debes indicar un proceso.'});
+ const process=await pool.query('SELECT company_id FROM homologation_processes WHERE id=$1',[processId.data]);
+ if(!process.rowCount)return response.status(404).json({error:'Proceso no encontrado.'});
+ if(!canAccessCompany(user,String(process.rows[0].company_id)))return response.status(403).json({error:'Proceso fuera de tu alcance.'});
+ const result=await pool.query(`SELECT p.id,p.legal_name,p.tax_id,p.current_step,p.workflow_status,p.workflow_substatus,p.valid_until,p.created_at,
+   assignment.assigned_at
+   FROM providers p
+   JOIN provider_assignments assignment ON assignment.provider_id=p.id AND assignment.assignment_role='ejecutiva'
+     AND assignment.assigned_user_id=$2 AND assignment.released_at IS NULL
+   WHERE p.process_id=$1
+   ORDER BY COALESCE(assignment.assigned_at,p.created_at) DESC,p.legal_name ASC`,[processId.data,user.id]);
+ response.json(buildMyPortfolio(result.rows.map((row)=>({
+  id:String(row.id),legalName:String(row.legal_name),taxId:String(row.tax_id),currentStep:Number(row.current_step),
+  workflowStatus:String(row.workflow_status),workflowSubstatus:String(row.workflow_substatus),
+  assignedAt:row.assigned_at||row.created_at,validUntil:row.valid_until,
+ }))));
+});
 const documentSchema=documentMetadataSchema.extend({contentBase64:z.string().min(4)});
 const documentUploadSchema=documentMetadataSchema.extend({byteSize:z.number().int().min(1).max(5*1024*1024)});
 const documentCompleteSchema=documentMetadataSchema.extend({documentId:z.string().uuid(),storageKey:z.string().min(1).max(500)});
@@ -154,7 +177,7 @@ providersRouter.post('/:id/documents',validateBody(documentSchema),async(request
  const user=(request as unknown as AuthenticatedRequest).user;
  const found=await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`,[request.params.id]);
  if(!found.rowCount)return response.status(404).json({error:'Proveedor no encontrado.'});
- if(!canAccessProvider(user,found.rows[0]))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
+ if(!await canAccessProvider(user,found.rows[0]))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
  const body=request.body as z.infer<typeof documentSchema>;
  try {
   const stored=await storeDocument(String(request.params.id),body.originalName,body.mimeType,body.contentBase64);
@@ -171,7 +194,7 @@ providersRouter.post('/:id/documents/upload-url',validateBody(documentUploadSche
  const user=(request as unknown as AuthenticatedRequest).user;
  const found=await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`,[request.params.id]);
  if(!found.rowCount)return response.status(404).json({error:'Proveedor no encontrado.'});
- if(!canAccessProvider(user,found.rows[0]))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
+ if(!await canAccessProvider(user,found.rows[0]))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
  try {
   const body=request.body as z.infer<typeof documentUploadSchema>;
   const prepared=await createDocumentUpload(String(request.params.id),body.originalName,body.mimeType,body.byteSize);
@@ -184,7 +207,7 @@ providersRouter.post('/:id/documents/complete',validateBody(documentCompleteSche
  const user=(request as unknown as AuthenticatedRequest).user;
  const found=await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`,[request.params.id]);
  if(!found.rowCount)return response.status(404).json({error:'Proveedor no encontrado.'});
- if(!canAccessProvider(user,found.rows[0]))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
+ if(!await canAccessProvider(user,found.rows[0]))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
  const body=request.body as z.infer<typeof documentCompleteSchema>;
  const expectedPrefix=`providers/${request.params.id}/${body.documentId}-`;
  if(!body.storageKey.startsWith(expectedPrefix))return response.status(422).json({error:'La carga no corresponde al proveedor seleccionado.'});
@@ -201,7 +224,7 @@ providersRouter.get('/:id/documents/:documentId/content',async(request,response)
  const user=(request as unknown as AuthenticatedRequest).user;
  const found=await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`,[request.params.id]);
  if(!found.rowCount)return response.status(404).json({error:'Proveedor no encontrado.'});
- if(!canAccessProvider(user,found.rows[0]))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
+ if(!await canAccessProvider(user,found.rows[0]))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
  const document=await pool.query(`SELECT original_name,mime_type,storage_driver,storage_key FROM provider_documents WHERE id=$1 AND provider_id=$2`,[request.params.documentId,request.params.id]);
  if(!document.rowCount)return response.status(404).json({error:'Documento no encontrado.'});
  try {
@@ -215,7 +238,7 @@ providersRouter.put('/:id/contact-preferences',requireRoles('supervisor_general'
  const user=(request as unknown as AuthenticatedRequest).user;
  const found=await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`,[request.params.id]);
  if(!found.rowCount)return response.status(404).json({error:'Proveedor no encontrado.'});
- if(!canAccessProvider(user,found.rows[0]))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
+ if(!await canAccessProvider(user,found.rows[0]))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
  const body=request.body as z.infer<typeof contactPreferencesSchema>;
  const result=await pool.query(`INSERT INTO provider_contact_preferences(provider_id,whatsapp_phone,whatsapp_opt_in,whatsapp_opt_in_at,whatsapp_opt_in_source,updated_by_user_id)
   VALUES($1,$2,$3,CASE WHEN $3 THEN now() ELSE NULL END,$4,$5)
@@ -233,7 +256,7 @@ providersRouter.post('/:id/transitions',validateBody(transitionSchema),async(req
   const found=await client.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1 FOR UPDATE OF p`,[request.params.id]);
   if(!found.rowCount){await client.query('ROLLBACK');return response.status(404).json({error:'Proveedor no encontrado.'})}
   const row=found.rows[0];
-  if(!canAccessProvider(user,row)){await client.query('ROLLBACK');return response.status(403).json({error:'Proveedor fuera de tu alcance.'})}
+  if(!await canAccessProvider(user,row,client)){await client.query('ROLLBACK');return response.status(403).json({error:'Proveedor fuera de tu alcance.'})}
   if(body.version!==undefined&&body.version!==Number(row.transition_version)){await client.query('ROLLBACK');return response.status(409).json({error:'El flujo fue actualizado por otro usuario. Recarga los datos antes de continuar.'})}
   const from=workflowStateFromRow(row);
   const transitionData=body.motivo&&body.datos.motivo===undefined?{...body.datos,motivo:body.motivo}:body.datos;
@@ -250,7 +273,7 @@ providersRouter.post('/:id/transitions',validateBody(transitionSchema),async(req
   const detail=legacyDetailStatuses(to.substatus);
   const updated=await client.query(`UPDATE providers SET current_step=$1,workflow_status=$2,workflow_substatus=$3,status=$4,
    executive_status=COALESCE($5,executive_status),supervisor_status=COALESCE($6,supervisor_status),
-   assigned_executive_id=CASE WHEN $7='ASIGNAR_EJECUTIVA' THEN $8 ELSE assigned_executive_id END,
+   assigned_executive_id=CASE WHEN $7='ASIGNAR_EJECUTIVA' THEN COALESCE(assigned_executive_id,$8) ELSE assigned_executive_id END,
    assigned_inspector_id=CASE WHEN $7 IN ('ASIGNAR_INSPECTOR','RETOMAR_VISITA') THEN $9 ELSE assigned_inspector_id END,
    valid_until=COALESCE($10::date,valid_until),transition_version=transition_version+1,updated_at=now()
    WHERE id=$11 RETURNING *`,[to.step,to.status,to.substatus,legacy,detail.executive,detail.supervisor,body.transicion,transitionData.ejecutivaId||null,transitionData.inspectorId||null,transitionData.fechaVencimiento||null,request.params.id]);
@@ -277,9 +300,12 @@ function legacyDetailStatuses(substatus:WorkflowState['substatus']){
  return {executive:executive[substatus]||null,supervisor:supervisor[substatus]||null};
 }
 
-function canAccessProvider(user:SessionUser,row:Record<string,unknown>){
+async function canAccessProvider(user:SessionUser,row:Record<string,unknown>,client?:PoolClient){
  if(user.role==='supervisor_general'||user.role==='administradora')return true;
- if(user.role==='ejecutiva')return row.assigned_executive_id===user.id;
+ if(user.role==='ejecutiva'){
+  const assignment=await (client||pool).query(`SELECT 1 FROM provider_assignments WHERE provider_id=$1 AND assignment_role='ejecutiva' AND assigned_user_id=$2 AND released_at IS NULL LIMIT 1`,[row.id,user.id]);
+  return Boolean(assignment.rowCount);
+ }
  if(user.role==='inspector')return row.assigned_inspector_id===user.id;
  return canAccessCompany(user,String(row.company_id));
 }

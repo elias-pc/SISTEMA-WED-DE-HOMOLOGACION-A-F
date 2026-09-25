@@ -14,7 +14,7 @@ const assignmentSchema = z.object({
     executiveId: z.string().trim().min(1),
     reason: z.string().trim().min(3).max(1_000),
 });
-const unassignmentSchema = assignmentSchema.omit({ executiveId: true });
+const unassignmentSchema = assignmentSchema;
 const distributionSchema = z.object({
     processId: z.string().trim().min(1),
     providerIds: providerIdsSchema,
@@ -49,13 +49,18 @@ assignmentsRouter.get('/portfolio', async (request, response) => {
         const [executives, providers, history] = await Promise.all([
             client.query(`SELECT u.id,u.name,u.email,COUNT(p.id)::int AS active_count
         FROM users u JOIN user_companies uc ON uc.user_id=u.id
-        LEFT JOIN providers p ON p.assigned_executive_id=u.id AND p.process_id=$1
+        LEFT JOIN provider_assignments a ON a.assigned_user_id=u.id AND a.assignment_role='ejecutiva' AND a.released_at IS NULL
+        LEFT JOIN providers p ON p.id=a.provider_id AND p.process_id=$1
         WHERE uc.company_id=$2 AND u.role='ejecutiva' AND u.active=true
         GROUP BY u.id,u.name,u.email ORDER BY u.name`, [processId.data, scope.companyId]),
-            client.query(`SELECT p.id,p.legal_name,p.tax_id,p.assigned_executive_id,u.name AS assigned_executive_name,
+            client.query(`SELECT p.id,p.legal_name,p.tax_id,
+        COALESCE(json_agg(json_build_object('id',a.assigned_user_id,'name',u.name) ORDER BY u.name)
+          FILTER (WHERE a.id IS NOT NULL),'[]'::json) AS assigned_executives,
         p.current_step,p.workflow_status,p.workflow_substatus,p.updated_at
-        FROM providers p LEFT JOIN users u ON u.id=p.assigned_executive_id
-        WHERE p.process_id=$1 ORDER BY p.legal_name`, [processId.data]),
+        FROM providers p
+        LEFT JOIN provider_assignments a ON a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.released_at IS NULL
+        LEFT JOIN users u ON u.id=a.assigned_user_id
+        WHERE p.process_id=$1 GROUP BY p.id ORDER BY p.legal_name`, [processId.data]),
             client.query(`SELECT a.id,a.provider_id,p.legal_name AS provider_name,a.assigned_user_id,assigned.name AS assigned_user_name,
         a.assigned_by_user_id,assigned_by.name AS assigned_by_name,a.assigned_at,a.released_at,
         a.released_by_user_id,released_by.name AS released_by_name,a.reason,a.release_reason
@@ -68,8 +73,11 @@ assignmentsRouter.get('/portfolio', async (request, response) => {
         ]);
         response.json({
             executives: executives.rows.map((row) => ({ id: row.id, name: row.name, email: row.email, activeCount: row.active_count })),
-            unassignedCount: providers.rows.filter((row) => !row.assigned_executive_id).length,
-            providers: providers.rows,
+            unassignedCount: providers.rows.filter((row) => !row.assigned_executives?.length).length,
+            providers: providers.rows.map(({ assigned_executives, ...provider }) => ({
+                ...provider,
+                assignedExecutives: assigned_executives || [],
+            })),
             history: history.rows,
         });
     }
@@ -115,8 +123,13 @@ assignmentsRouter.post('/unassign', validateBody(unassignmentSchema), async (req
             return response.status(422).json({ error: 'Uno o más proveedores no pertenecen al proceso.' });
         }
         const released = await client.query(`UPDATE provider_assignments SET released_at=now(),released_by_user_id=$1,release_reason=$2
-      WHERE provider_id=ANY($3::text[]) AND assignment_role='ejecutiva' AND released_at IS NULL RETURNING provider_id`, [user.id, body.reason, providerIds]);
-        await client.query(`UPDATE providers SET assigned_executive_id=NULL,updated_at=now() WHERE id=ANY($1::text[])`, [providerIds]);
+      WHERE provider_id=ANY($3::text[]) AND assignment_role='ejecutiva' AND assigned_user_id=$4 AND released_at IS NULL RETURNING provider_id`, [user.id, body.reason, providerIds, body.executiveId]);
+        await client.query(`UPDATE providers p SET assigned_executive_id=(
+      SELECT assigned_user_id FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.released_at IS NULL ORDER BY a.assigned_at LIMIT 1
+      ),updated_at=now()
+      WHERE p.id=ANY($1::text[]) AND EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.released_at IS NULL)`, [providerIds]);
+        await client.query(`UPDATE providers p SET assigned_executive_id=NULL,updated_at=now()
+      WHERE p.id=ANY($1::text[]) AND NOT EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.released_at IS NULL)`, [providerIds]);
         await client.query('COMMIT');
         response.json({ unassigned: released.rowCount || 0, unchanged: providerIds.length - (released.rowCount || 0) });
     }
@@ -160,36 +173,37 @@ async function applyPlan(user, processId, plan, reason) {
         }
         const activeAssignments = await client.query(`SELECT id,provider_id,assigned_user_id FROM provider_assignments
       WHERE provider_id=ANY($1::text[]) AND assignment_role='ejecutiva' AND released_at IS NULL FOR UPDATE`, [providerIds]);
-        const activeByProvider = new Map(activeAssignments.rows.map((row) => [String(row.provider_id), row]));
+        const activeByProvider = new Map();
+        for (const assignment of activeAssignments.rows) {
+            const providerId = String(assignment.provider_id);
+            const ids = activeByProvider.get(providerId) || new Set();
+            ids.add(String(assignment.assigned_user_id));
+            activeByProvider.set(providerId, ids);
+        }
         let assigned = 0;
         let reassigned = 0;
         let unchanged = 0;
         for (const item of plan) {
             const provider = providers.get(item.providerId);
-            const active = activeByProvider.get(item.providerId);
-            if (active?.assigned_user_id === item.executiveId || (!active && provider.assigned_executive_id === item.executiveId)) {
+            const active = activeByProvider.get(item.providerId) || new Set();
+            if (active.has(item.executiveId)) {
                 unchanged += 1;
                 continue;
             }
-            if (active) {
-                await client.query(`UPDATE provider_assignments SET released_at=now(),released_by_user_id=$1,release_reason=$2 WHERE id=$3`, [user.id, reason, active.id]);
-                reassigned += 1;
-            }
-            else if (provider.assigned_executive_id)
-                reassigned += 1;
-            else
-                assigned += 1;
+            assigned += 1;
             await client.query(`INSERT INTO provider_assignments(id,provider_id,assignment_role,assigned_user_id,assigned_by_user_id,reason)
         VALUES($1,$2,'ejecutiva',$3,$4,$5)`, [randomUUID(), item.providerId, item.executiveId, user.id, reason]);
+            active.add(item.executiveId);
+            activeByProvider.set(item.providerId, active);
             if (provider.workflow_substatus === 'REGISTRADO') {
-                await client.query(`UPDATE providers SET assigned_executive_id=$1,current_step=3,workflow_status='PENDIENTE_INSCRIPCION',
+                await client.query(`UPDATE providers SET assigned_executive_id=COALESCE(assigned_executive_id,$1),current_step=3,workflow_status='PENDIENTE_INSCRIPCION',
           workflow_substatus='ASIGNADO_EJECUTIVA',status='En proceso',transition_version=transition_version+1,updated_at=now() WHERE id=$2`, [item.executiveId, item.providerId]);
                 await client.query(`INSERT INTO provider_status_history(id,provider_id,transition_code,from_step,from_status,from_substatus,
           to_step,to_status,to_substatus,actor_user_id,actor_role,reason,metadata)
           VALUES($1,$2,'ASIGNAR_EJECUTIVA',$3,$4,$5,3,'PENDIENTE_INSCRIPCION','ASIGNADO_EJECUTIVA',$6,$7,$8,$9::jsonb)`, [randomUUID(), item.providerId, provider.current_step, provider.workflow_status, provider.workflow_substatus, user.id, user.role, reason, JSON.stringify({ ejecutivaId: item.executiveId, origen: 'cartera' })]);
             }
             else {
-                await client.query(`UPDATE providers SET assigned_executive_id=$1,updated_at=now() WHERE id=$2`, [item.executiveId, item.providerId]);
+                await client.query(`UPDATE providers SET assigned_executive_id=COALESCE(assigned_executive_id,$1),updated_at=now() WHERE id=$2`, [item.executiveId, item.providerId]);
             }
         }
         await client.query('COMMIT');

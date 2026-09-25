@@ -109,7 +109,7 @@ export interface ReporteEstadoProveedores { rows:EstadoProveedorReporte[] }
 
 export interface CarteraEjecutivaResumen { id:string; name:string; email:string; activeCount:number }
 export interface ProveedorCartera {
-  id:string; legal_name:string; tax_id:string; assigned_executive_id?:string|null; assigned_executive_name?:string|null;
+  id:string; legal_name:string; tax_id:string; assignedExecutives:Array<{id:string;name:string}>;
   current_step:number; workflow_status:string; workflow_substatus:string; updated_at:string;
 }
 export interface HistorialAsignacion {
@@ -119,6 +119,15 @@ export interface HistorialAsignacion {
 }
 export interface ResumenCartera { executives:CarteraEjecutivaResumen[]; unassignedCount:number; providers:ProveedorCartera[]; history:HistorialAsignacion[] }
 export interface ResultadoAsignacion { assigned?:number; reassigned?:number; unassigned?:number; unchanged:number; total?:number }
+export type CategoriaMiCartera = 'nuevos' | 'gestion' | 'prioritarios';
+export interface ProveedorMiCartera {
+  id:string; razonSocial:string; ruc:string; paso:number; estado:string; subestado:string;
+  fechaAsignacion:string|null; fechaVencimiento:string|null; categoria:CategoriaMiCartera; alerta:string|null;
+}
+export interface ResumenMiCartera {
+  summary:{total:number;newToday:number;newWeek:number;inProgress:number;priority:number};
+  providers:ProveedorMiCartera[];
+}
 export interface ProductividadEjecutiva {
   executiveId:string; executiveName:string; currentPortfolio:number; assignedInPeriod:number; contacts:number;
   formsSent:number; formsReturned:number; visitsCoordinated:number; homologated:number; pending:number;

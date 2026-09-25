@@ -12,7 +12,8 @@ async function scopedProcess(request, processId) {
     if (!canAccessCompany(request.user, process.company_id))
         return { error: 'Proceso fuera de tu alcance.' };
     if (request.user.role === 'ejecutiva') {
-        const assigned = await pool.query('SELECT 1 FROM providers WHERE process_id=$1 AND assigned_executive_id=$2 LIMIT 1', [processId, request.user.id]);
+        const assigned = await pool.query(`SELECT 1 FROM providers p JOIN provider_assignments a ON a.provider_id=p.id
+      WHERE p.process_id=$1 AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL LIMIT 1`, [processId, request.user.id]);
         if (!assigned.rowCount)
             return { error: 'Proceso fuera de tu alcance.' };
     }
@@ -36,9 +37,9 @@ reportsRouter.get('/dashboard', async (request, response) => {
       COUNT(*) FILTER (WHERE workflow_substatus='DATOS_INCOMPLETOS')::int AS datos_incompletos,
       COUNT(*) FILTER (WHERE workflow_substatus IN ('DESESTIMADO','VISITA_DESESTIMADA'))::int AS desestimados,
       COUNT(*) FILTER (WHERE workflow_substatus='NO_ES_PROVEEDOR')::int AS no_son_proveedores
-      FROM providers p WHERE process_id=$1 AND ($2::text IS NULL OR p.assigned_executive_id=$2)`, [parsed.data, executiveId]),
+      FROM providers p WHERE process_id=$1 AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL))`, [parsed.data, executiveId]),
         pool.query(`SELECT COUNT(*) FILTER (WHERE expires_on BETWEEN current_date AND current_date + 45)::int AS por_vencer,
-      COUNT(*) FILTER (WHERE expires_on < current_date)::int AS vencidos FROM provider_certificates c JOIN providers p ON p.id=c.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR p.assigned_executive_id=$2)`, [parsed.data, executiveId]),
+      COUNT(*) FILTER (WHERE expires_on < current_date)::int AS vencidos FROM provider_certificates c JOIN providers p ON p.id=c.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL))`, [parsed.data, executiveId]),
     ]);
     response.json({ ...counts.rows[0], ...certificates.rows[0] });
 });
@@ -71,7 +72,7 @@ reportsRouter.get('/status', async (request, response) => {
         COALESCE(json_agg(json_build_object('id',id,'originalName',original_name,'mimeType',mime_type,'byteSize',byte_size) ORDER BY created_at DESC),'[]'::json) AS deliverable_documents
       FROM provider_documents WHERE provider_id=p.id
     ) documents ON true
-    WHERE p.process_id=$1 AND ($2::text IS NULL OR p.assigned_executive_id=$2) AND ($3::text IS NULL OR p.assigned_inspector_id=$3)
+    WHERE p.process_id=$1 AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL)) AND ($3::text IS NULL OR p.assigned_inspector_id=$3)
     ORDER BY p.legal_name`, [processId.data, executiveId, inspectorId]);
     response.json({ rows: result.rows });
 });
@@ -86,11 +87,11 @@ reportsRouter.get('/operational', async (request, response) => {
         return response.status(scope.error === 'Proceso no encontrado.' ? 404 : 403).json(scope);
     const executiveId = request.user.role === 'ejecutiva' ? request.user.id : null;
     const queries = {
-        directorio: { columns: ['RUC', 'Razón social', 'Contacto', 'Correo', 'Teléfonos', 'Departamento', 'Distrito', 'Paso', 'Estado', 'Subestado'], sql: `SELECT p.tax_id,p.legal_name,p.contact_name,p.email,p.phones,p.department,p.district,p.current_step,p.workflow_status,p.workflow_substatus FROM providers p WHERE p.process_id=$1 AND ($2::text IS NULL OR p.assigned_executive_id=$2) ORDER BY p.legal_name` },
-        facturacion: { columns: ['RUC', 'Proveedor', 'Banco', 'Monto', 'Modalidad', 'Fecha de pago', 'Operación', 'Factura'], sql: `SELECT p.tax_id,p.legal_name,pa.bank,pa.amount,pa.modality,pa.paid_on,pa.operation_number,pa.invoice_number FROM provider_payments pa JOIN providers p ON p.id=pa.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR p.assigned_executive_id=$2) ORDER BY pa.paid_on DESC` },
-        homologados: { columns: ['RUC', 'Proveedor', 'Tipo', 'Dictamen', 'Puntaje', 'Emisión', 'Vencimiento', 'Alcance'], sql: `SELECT p.tax_id,p.legal_name,c.document_type,c.opinion,c.score,c.issued_on,c.expires_on,c.scope FROM provider_certificates c JOIN providers p ON p.id=c.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR p.assigned_executive_id=$2) ORDER BY c.expires_on` },
-        inspecciones: { columns: ['RUC', 'Proveedor', 'Modalidad', 'Programada', 'Realizada', 'Estado', 'Motivo', 'Informe'], sql: `SELECT p.tax_id,p.legal_name,i.modality,i.scheduled_at,i.completed_at,i.status,i.reason,i.report_reference FROM provider_inspections i JOIN providers p ON p.id=i.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR p.assigned_executive_id=$2) ORDER BY i.scheduled_at DESC NULLS LAST` },
-        trazabilidad: { columns: ['RUC', 'Proveedor', 'Transición', 'Desde', 'Hacia', 'Rol', 'Motivo', 'Fecha'], sql: `SELECT p.tax_id,p.legal_name,h.transition_code,concat(h.from_step,' · ',h.from_substatus),concat(h.to_step,' · ',h.to_substatus),h.actor_role,h.reason,h.created_at FROM provider_status_history h JOIN providers p ON p.id=h.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR p.assigned_executive_id=$2) ORDER BY h.created_at DESC` },
+        directorio: { columns: ['RUC', 'Razón social', 'Contacto', 'Correo', 'Teléfonos', 'Departamento', 'Distrito', 'Paso', 'Estado', 'Subestado'], sql: `SELECT p.tax_id,p.legal_name,p.contact_name,p.email,p.phones,p.department,p.district,p.current_step,p.workflow_status,p.workflow_substatus FROM providers p WHERE p.process_id=$1 AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL)) ORDER BY p.legal_name` },
+        facturacion: { columns: ['RUC', 'Proveedor', 'Banco', 'Monto', 'Modalidad', 'Fecha de pago', 'Operación', 'Factura'], sql: `SELECT p.tax_id,p.legal_name,pa.bank,pa.amount,pa.modality,pa.paid_on,pa.operation_number,pa.invoice_number FROM provider_payments pa JOIN providers p ON p.id=pa.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL)) ORDER BY pa.paid_on DESC` },
+        homologados: { columns: ['RUC', 'Proveedor', 'Tipo', 'Dictamen', 'Puntaje', 'Emisión', 'Vencimiento', 'Alcance'], sql: `SELECT p.tax_id,p.legal_name,c.document_type,c.opinion,c.score,c.issued_on,c.expires_on,c.scope FROM provider_certificates c JOIN providers p ON p.id=c.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL)) ORDER BY c.expires_on` },
+        inspecciones: { columns: ['RUC', 'Proveedor', 'Modalidad', 'Programada', 'Realizada', 'Estado', 'Motivo', 'Informe'], sql: `SELECT p.tax_id,p.legal_name,i.modality,i.scheduled_at,i.completed_at,i.status,i.reason,i.report_reference FROM provider_inspections i JOIN providers p ON p.id=i.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL)) ORDER BY i.scheduled_at DESC NULLS LAST` },
+        trazabilidad: { columns: ['RUC', 'Proveedor', 'Transición', 'Desde', 'Hacia', 'Rol', 'Motivo', 'Fecha'], sql: `SELECT p.tax_id,p.legal_name,h.transition_code,concat(h.from_step,' · ',h.from_substatus),concat(h.to_step,' · ',h.to_substatus),h.actor_role,h.reason,h.created_at FROM provider_status_history h JOIN providers p ON p.id=h.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL)) ORDER BY h.created_at DESC` },
     };
     const report = queries[type.data];
     const rows = await pool.query(report.sql, [processId.data, executiveId]);
@@ -109,7 +110,8 @@ reportsRouter.get('/productivity', requireRoles('supervisor_general', 'administr
         pool.query(`SELECT u.id,u.name,COUNT(p.id)::int AS current_portfolio,
       COUNT(p.id) FILTER (WHERE p.workflow_status<>'HOMOLOGADO')::int AS pending
       FROM users u JOIN user_companies uc ON uc.user_id=u.id
-      LEFT JOIN providers p ON p.assigned_executive_id=u.id AND p.process_id=$1
+      LEFT JOIN provider_assignments a ON a.assigned_user_id=u.id AND a.assignment_role='ejecutiva' AND a.released_at IS NULL
+      LEFT JOIN providers p ON p.id=a.provider_id AND p.process_id=$1
       WHERE uc.company_id=$2 AND u.role='ejecutiva' AND u.active=true GROUP BY u.id,u.name ORDER BY u.name`, [parsed.data.processId, scope.process.company_id]),
         pool.query(`SELECT a.assigned_user_id,COUNT(*)::int AS assigned_in_period
       FROM provider_assignments a JOIN providers p ON p.id=a.provider_id

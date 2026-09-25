@@ -29,8 +29,8 @@ describe('cartera e historial de ejecutivas en modo local', () => {
     const portfolio = await admin.get('/api/assignments/portfolio').query({ processId: 'proc-decal-2026' });
     expect(portfolio.status).toBe(200);
     const createdProviders = portfolio.body.providers.filter((provider: { id: string }) => providerIds.includes(provider.id));
-    expect(createdProviders.filter((provider: { assigned_executive_id: string }) => provider.assigned_executive_id === 'eje-decal')).toHaveLength(2);
-    expect(createdProviders.filter((provider: { assigned_executive_id: string }) => provider.assigned_executive_id === 'eje-decal-2')).toHaveLength(2);
+    expect(createdProviders.filter((provider: { assignedExecutives: Array<{ id: string }> }) => provider.assignedExecutives.some((executive) => executive.id === 'eje-decal'))).toHaveLength(2);
+    expect(createdProviders.filter((provider: { assignedExecutives: Array<{ id: string }> }) => provider.assignedExecutives.some((executive) => executive.id === 'eje-decal-2'))).toHaveLength(2);
     expect(createdProviders.every((provider: { current_step: number; workflow_substatus: string }) => provider.current_step === 3 && provider.workflow_substatus === 'ASIGNADO_EJECUTIVA')).toBe(true);
 
     const executiveOne = await login('ejecutiva@decal.com', 'Ejecutiva123');
@@ -39,22 +39,35 @@ describe('cartera e historial de ejecutivas en modo local', () => {
     const visibleCreated = visible.body.providers.filter((provider: { id: string }) => providerIds.includes(provider.id));
     expect(visibleCreated).toHaveLength(2);
     expect(visibleCreated.every((provider: { ejecutivaAsignadaId: string }) => provider.ejecutivaAsignadaId === 'eje-decal')).toBe(true);
-    expect((await executiveOne.post('/api/assignments/unassign').send({ processId: 'proc-decal-2026', providerIds: [providerIds[0]], reason: 'Intento sin permiso' })).status).toBe(403);
+    expect((await executiveOne.post('/api/assignments/unassign').send({ processId: 'proc-decal-2026', providerIds: [providerIds[0]], executiveId: 'eje-decal', reason: 'Intento sin permiso' })).status).toBe(403);
 
     const supervisor = await login('supervisor@af.com', 'super20226ayf');
     const reassigned = await supervisor.post('/api/assignments/assign').send({ processId: 'proc-decal-2026', providerIds: [providerIds[0]], executiveId: 'eje-decal-2', reason: 'Rebalanceo por carga' });
     expect(reassigned.status).toBe(200);
-    expect(reassigned.body.reassigned).toBe(1);
-    expect((await executiveOne.get(`/api/providers/${providerIds[0]}/workflow`)).status).toBe(403);
+    expect(reassigned.body.assigned).toBe(1);
+    const portfolioAfterAssignment = await admin.get('/api/assignments/portfolio').query({ processId: 'proc-decal-2026' });
+    const sharedProvider = portfolioAfterAssignment.body.providers.find((provider: { id: string }) => provider.id === providerIds[0]);
+    expect(sharedProvider.assignedExecutives).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'eje-decal' }),
+      expect.objectContaining({ id: 'eje-decal-2' }),
+    ]));
+    expect((await executiveOne.get(`/api/providers/${providerIds[0]}/workflow`)).status).toBe(200);
+    const executiveTwo = await login('ejecutiva2@decal.com', 'Ejecutiva123');
+    expect((await executiveTwo.get(`/api/providers/${providerIds[0]}/workflow`)).status).toBe(200);
+    const executiveTwoPortfolio = await executiveTwo.get('/api/providers/my-portfolio').query({ processId: 'proc-decal-2026' });
+    expect(executiveTwoPortfolio.status).toBe(200);
+    expect(executiveTwoPortfolio.body.providers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: providerIds[0] }),
+    ]));
 
-    const removed = await admin.post('/api/assignments/unassign').send({ processId: 'proc-decal-2026', providerIds: [providerIds[1]], reason: 'Proveedor pendiente de nueva responsable' });
+    const removed = await admin.post('/api/assignments/unassign').send({ processId: 'proc-decal-2026', providerIds: [providerIds[1]], executiveId: 'eje-decal-2', reason: 'Proveedor pendiente de nueva responsable' });
     expect(removed.status).toBe(200);
     expect(removed.body.unassigned).toBe(1);
     const finalPortfolio = await admin.get('/api/assignments/portfolio').query({ processId: 'proc-decal-2026' });
     const removedProvider = finalPortfolio.body.providers.find((provider: { id: string }) => provider.id === providerIds[1]);
-    expect(removedProvider).toMatchObject({ assigned_executive_id: null, current_step: 3, workflow_substatus: 'ASIGNADO_EJECUTIVA' });
+    expect(removedProvider).toMatchObject({ assignedExecutives: [], current_step: 3, workflow_substatus: 'ASIGNADO_EJECUTIVA' });
     const releasedHistory = finalPortfolio.body.history.filter((item: { provider_id: string; released_at?: string }) => providerIds.includes(item.provider_id) && item.released_at);
-    expect(releasedHistory.length).toBeGreaterThanOrEqual(2);
+    expect(releasedHistory.length).toBeGreaterThanOrEqual(1);
 
     const productivity = await admin.get('/api/reports/productivity').query({ processId: 'proc-decal-2026', from: '2026-01-01', to: '2026-12-31' });
     expect(productivity.status).toBe(200);

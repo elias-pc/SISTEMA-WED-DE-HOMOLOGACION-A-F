@@ -5,6 +5,7 @@ export const roleLabels: Record<UserRole, string> = { cliente: 'Cliente', ejecut
 export const routeRoles: Record<string, UserRole[]> = {
   '/': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
   '/proveedores': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
+  '/mi-cartera': ['ejecutiva'],
   '/homologaciones': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
   '/homologadas': ['ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
   '/reportes': ['ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],

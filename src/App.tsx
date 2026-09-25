@@ -11,6 +11,7 @@ import UnauthorizedPage from '../app/unauthorized/UnauthorizedPage';
 import ProtectedRoute from './auth/ProtectedRoute';
 import LandingPage from '../app/landing/LandingPage';
 import CarterasPage from '../app/carteras/CarterasPage';
+import MiCarteraPage from '../app/mi-cartera/MiCarteraPage';
 import { features } from '../services/features';
 
 function App() {
@@ -30,6 +31,9 @@ function App() {
           <Route element={<ProtectedRoute allowedRoles={['supervisor_general', 'administradora']} />}>
             <Route path="configuracion" element={<ConfiguracionPage />} />
             <Route path="carteras" element={<CarterasPage />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['ejecutiva']} />}>
+            <Route path="mi-cartera" element={<MiCarteraPage />} />
           </Route>
           <Route path="sin-permiso" element={<UnauthorizedPage />} />
         </Route>

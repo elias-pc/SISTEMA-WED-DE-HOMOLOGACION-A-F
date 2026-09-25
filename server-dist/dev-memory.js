@@ -9,6 +9,7 @@ import { readLocalDocument, storeLocalDocument } from './document-storage.js';
 import { config } from './config.js';
 import { expiryTransition } from './certificate-expiry.js';
 import { buildBalancedAssignmentPlan, buildQuantityAssignmentPlan } from './assignment-planning.js';
+import { buildMyPortfolio } from './my-portfolio.js';
 export const memoryRouter = Router();
 const companies = [
     { id: 'decal', razonSocial: 'DECAL S.A.C.', ruc: '20512345678', nombreComercial: 'DECAL', contacto: 'María López', email: 'contacto@decal.com', telefono: '987654321', estado: 'Activa' },
@@ -49,9 +50,7 @@ function dossier(providerId) {
 }
 function memoryRecords(provider, transition, data, actor) {
     const records = dossier(provider.id), now = new Date().toISOString();
-    if (transition === 'ASIGNAR_EJECUTIVA') {
-        records.assignments.forEach(item => { if (item.assignment_role === 'ejecutiva' && !item.released_at)
-            item.released_at = now; });
+    if (transition === 'ASIGNAR_EJECUTIVA' && !records.assignments.some(item => item.assignment_role === 'ejecutiva' && item.assigned_user_id === data.ejecutivaId && !item.released_at)) {
         records.assignments.unshift({ id: randomUUID(), provider_id: provider.id, assignment_role: 'ejecutiva', assigned_user_id: data.ejecutivaId, assigned_by_user_id: actor.id, assigned_at: now, reason: data.motivo || null });
     }
     if (transition === 'ASIGNAR_INSPECTOR' || transition === 'RETOMAR_VISITA') {
@@ -90,10 +89,19 @@ function canSeeProvider(user, provider) {
     if (user.role === 'supervisor_general' || user.role === 'administradora')
         return true;
     if (user.role === 'ejecutiva')
-        return provider.ejecutivaAsignadaId === user.id;
+        return activeExecutiveIds(provider).includes(user.id);
     if (user.role === 'inspector')
         return provider.inspectorAsignadoId === user.id;
     return scoped(user, provider.empresaId);
+}
+function activeExecutiveIds(provider) {
+    const ids = Array.isArray(provider.ejecutivaAsignadaIds) ? provider.ejecutivaAsignadaIds : [];
+    return [...new Set([...ids, ...(provider.ejecutivaAsignadaId ? [provider.ejecutivaAsignadaId] : [])])];
+}
+function setActiveExecutiveIds(provider, ids) {
+    const unique = [...new Set(ids)];
+    provider.ejecutivaAsignadaIds = unique;
+    provider.ejecutivaAsignadaId = unique[0];
 }
 function elapsedDays(from, to = new Date().toISOString()) {
     const start = new Date(String(from || '')).getTime(), end = new Date(String(to || '')).getTime();
@@ -108,22 +116,14 @@ function assignMemoryPlan(plan, actor, reason) {
         const provider = providers.find(candidate => candidate.id === item.providerId);
         if (!provider)
             continue;
-        if (provider.ejecutivaAsignadaId === item.executiveId) {
+        if (activeExecutiveIds(provider).includes(item.executiveId)) {
             unchanged += 1;
             continue;
         }
         const records = dossier(provider.id);
-        const active = records.assignments.find(entry => entry.assignment_role === 'ejecutiva' && !entry.released_at);
-        if (active) {
-            Object.assign(active, { released_at: now, released_by_user_id: actor.id, release_reason: reason });
-            reassigned += 1;
-        }
-        else if (provider.ejecutivaAsignadaId)
-            reassigned += 1;
-        else
-            assigned += 1;
+        assigned += 1;
         records.assignments.unshift({ id: randomUUID(), provider_id: provider.id, assignment_role: 'ejecutiva', assigned_user_id: item.executiveId, assigned_by_user_id: actor.id, assigned_at: now, released_at: null, reason });
-        provider.ejecutivaAsignadaId = item.executiveId;
+        setActiveExecutiveIds(provider, [...activeExecutiveIds(provider), item.executiveId]);
         if (provider.flujo?.subestado === 'REGISTRADO') {
             const from = memoryState(provider), to = { step: 3, status: 'PENDIENTE_INSCRIPCION', substatus: 'ASIGNADO_EJECUTIVA' };
             workflowHistory.set(provider.id, [{ id: randomUUID(), transition_code: 'ASIGNAR_EJECUTIVA', from_step: from.step, from_status: from.status, from_substatus: from.substatus, to_step: to.step, to_status: to.status, to_substatus: to.substatus, actor_user_id: actor.id, actor_role: actor.role, reason, metadata: { ejecutivaId: item.executiveId, origen: 'cartera' }, created_at: now }, ...(workflowHistory.get(provider.id) || [])]);
@@ -140,11 +140,24 @@ memoryRouter.post('/auth/logout', (request, response) => { const token = request
 memoryRouter.get('/companies', requireUser, (_request, response) => { const user = response.locals.user; response.json({ companies: companies.filter(item => scoped(user, item.id)) }); });
 memoryRouter.post('/companies', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); companies.push(request.body); response.status(201).json({ company: request.body }); });
-memoryRouter.get('/processes', requireUser, (_request, response) => { const user = response.locals.user; response.json({ processes: processes.filter(item => scoped(user, item.empresaId) || (user.role === 'ejecutiva' && item.ejecutivaId === user.id)) }); });
+memoryRouter.get('/processes', requireUser, (_request, response) => { const user = response.locals.user; response.json({ processes: processes.filter(item => scoped(user, item.empresaId) || (user.role === 'ejecutiva' && providers.some(provider => provider.procesoId === item.id && activeExecutiveIds(provider).includes(user.id)))) }); });
 memoryRouter.post('/processes', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); processes.push(request.body); response.status(201).json({ process: request.body }); });
 memoryRouter.get('/providers', requireUser, (request, response) => { const user = response.locals.user, process = processes.find(item => item.id === request.query.processId); if (!process || !scoped(user, process.empresaId))
     return response.status(403).json({ error: 'Proceso fuera de alcance.' }); response.json({ providers: providers.filter(item => item.procesoId === process.id && canSeeProvider(user, item)).map(item => ({ ...item, transicionesDisponibles: memoryTransitions(item, user) })) }); });
+memoryRouter.get('/providers/my-portfolio', requireUser, (request, response) => {
+    const user = response.locals.user;
+    if (user.role !== 'ejecutiva')
+        return response.status(403).json({ error: 'No tienes permiso.' });
+    const process = processes.find(item => item.id === String(request.query.processId || ''));
+    if (!process || !scoped(user, process.empresaId))
+        return response.status(403).json({ error: 'Proceso fuera de alcance.' });
+    const entries = providers.filter(item => item.procesoId === process.id && activeExecutiveIds(item).includes(user.id)).map((provider) => {
+        const assignment = dossier(provider.id).assignments.find((item) => item.assignment_role === 'ejecutiva' && item.assigned_user_id === user.id && !item.released_at);
+        return { id: provider.id, legalName: provider.razonSocial, taxId: provider.ruc, currentStep: provider.flujo.paso, workflowStatus: provider.flujo.estado, workflowSubstatus: provider.flujo.subestado, assignedAt: assignment?.assigned_at || provider.fechaRegistro, validUntil: provider.vigencia === 'N/A' ? null : provider.vigencia };
+    });
+    response.json(buildMyPortfolio(entries));
+});
 memoryRouter.post('/providers', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); const provider = { ...request.body, id: request.body.id || randomUUID(), estado: 'En proceso', estadoEjecutiva: 'Contactado', calificacion: 0, fechaRegistro: new Date().toISOString().slice(0, 10), vigencia: 'N/A', flujo: { paso: 2, estado: 'PENDIENTE_INSCRIPCION', subestado: 'REGISTRADO', version: 0 } }; providers.unshift(provider); response.status(201).json({ provider: { ...provider, transicionesDisponibles: memoryTransitions(provider, user) } }); });
 memoryRouter.post('/providers/import/preview', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
@@ -177,7 +190,7 @@ memoryRouter.get('/assignments/portfolio', requireUser, (request, response) => {
     const processProviders = providers.filter(item => item.procesoId === process.id);
     const executives = users.filter(item => item.role === 'ejecutiva' && item.empresaIds.some(id => id === process.empresaId));
     const history = processProviders.flatMap(provider => dossier(provider.id).assignments.filter(item => item.assignment_role === 'ejecutiva').map(item => ({ ...item, provider_name: provider.razonSocial, assigned_user_name: users.find(candidate => candidate.id === item.assigned_user_id)?.name || '', assigned_by_name: users.find(candidate => candidate.id === item.assigned_by_user_id)?.name || '', released_by_name: users.find(candidate => candidate.id === item.released_by_user_id)?.name || '' }))).sort((a, b) => String(b.assigned_at).localeCompare(String(a.assigned_at)));
-    response.json({ executives: executives.map(item => ({ id: item.id, name: item.name, email: item.email, activeCount: processProviders.filter(provider => provider.ejecutivaAsignadaId === item.id).length })), unassignedCount: processProviders.filter(item => !item.ejecutivaAsignadaId).length, providers: processProviders.map(item => ({ id: item.id, legal_name: item.razonSocial, tax_id: item.ruc, assigned_executive_id: item.ejecutivaAsignadaId || null, assigned_executive_name: executives.find(executive => executive.id === item.ejecutivaAsignadaId)?.name || null, current_step: item.flujo.paso, workflow_status: item.flujo.estado, workflow_substatus: item.flujo.subestado, updated_at: item.fechaRegistro })), history: history.slice(0, 200) });
+    response.json({ executives: executives.map(item => ({ id: item.id, name: item.name, email: item.email, activeCount: processProviders.filter(provider => activeExecutiveIds(provider).includes(item.id)).length })), unassignedCount: processProviders.filter(item => activeExecutiveIds(item).length === 0).length, providers: processProviders.map(item => ({ id: item.id, legal_name: item.razonSocial, tax_id: item.ruc, assignedExecutives: activeExecutiveIds(item).map(id => ({ id, name: executives.find(executive => executive.id === id)?.name || id })), current_step: item.flujo.paso, workflow_status: item.flujo.estado, workflow_substatus: item.flujo.subestado, updated_at: item.fechaRegistro })), history: history.slice(0, 200) });
 });
 memoryRouter.post('/assignments/assign', requireUser, (request, response) => {
     const user = response.locals.user;
@@ -213,18 +226,19 @@ memoryRouter.post('/assignments/unassign', requireUser, (request, response) => {
     const user = response.locals.user;
     if (!['supervisor_general', 'administradora'].includes(user.role))
         return response.status(403).json({ error: 'No tienes permiso.' });
-    const process = processes.find(item => item.id === request.body.processId), ids = [...new Set(request.body.providerIds || [])];
-    if (!process || ids.some(id => !providers.some(item => item.id === id && item.procesoId === process.id)))
-        return response.status(422).json({ error: 'Los proveedores no son válidos para este proceso.' });
+    const process = processes.find(item => item.id === request.body.processId), ids = [...new Set(request.body.providerIds || [])], executiveId = String(request.body.executiveId || '');
+    if (!process || !executiveId || ids.some(id => !providers.some(item => item.id === id && item.procesoId === process.id)))
+        return response.status(422).json({ error: 'Los proveedores o la ejecutiva no son válidos para este proceso.' });
     let unassigned = 0;
     const now = new Date().toISOString();
     for (const id of ids) {
         const provider = providers.find(item => item.id === id);
-        const active = dossier(id).assignments.find(item => item.assignment_role === 'ejecutiva' && !item.released_at);
+        const active = dossier(id).assignments.find(item => item.assignment_role === 'ejecutiva' && item.assigned_user_id === executiveId && !item.released_at);
         if (active)
             Object.assign(active, { released_at: now, released_by_user_id: user.id, release_reason: String(request.body.reason || 'Retiro de cartera.') });
-        if (provider.ejecutivaAsignadaId) {
-            provider.ejecutivaAsignadaId = undefined;
+        const idsAfter = activeExecutiveIds(provider).filter(item => item !== executiveId);
+        if (idsAfter.length !== activeExecutiveIds(provider).length) {
+            setActiveExecutiveIds(provider, idsAfter);
             unassigned += 1;
         }
     }
@@ -276,7 +290,7 @@ memoryRouter.post('/providers/:id/transitions', requireUser, (request, response)
     provider.flujo = { paso: to.step, estado: to.status, subestado: to.substatus, version: provider.flujo.version + 1 };
     provider.estado = legacyProviderStatus(to);
     if (code === 'ASIGNAR_EJECUTIVA')
-        provider.ejecutivaAsignadaId = data.ejecutivaId;
+        setActiveExecutiveIds(provider, [...activeExecutiveIds(provider), data.ejecutivaId]);
     if (code === 'ASIGNAR_INSPECTOR' || code === 'RETOMAR_VISITA')
         provider.inspectorAsignadoId = data.inspectorId;
     if (data.fechaVencimiento)
