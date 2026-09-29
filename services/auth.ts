@@ -7,7 +7,6 @@ export const routeRoles: Record<string, UserRole[]> = {
   '/proveedores': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
   '/mi-cartera': ['ejecutiva'],
   '/homologaciones': ['cliente', 'ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
-  '/homologadas': ['ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
   '/reportes': ['ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector'],
   '/configuracion': ['supervisor_general', 'administradora'],
   '/carteras': ['supervisor_general', 'administradora'],

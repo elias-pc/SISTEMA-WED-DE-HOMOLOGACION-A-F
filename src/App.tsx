@@ -4,7 +4,6 @@ import LoginPage from '../app/login/LoginPage';
 import DashboardPage from '../app/dashboard/DashboardPage';
 import ProveedoresPage from '../app/proveedores/ProveedoresPage';
 import HomologacionesPage from '../app/homologaciones/HomologacionesPage';
-import HomologadasPage from '../app/homologadas/HomologadasPage';
 import ReportesPage from '../app/reportes/ReportesPage';
 import ConfiguracionPage from '../app/configuracion/ConfiguracionPage';
 import UnauthorizedPage from '../app/unauthorized/UnauthorizedPage';
@@ -26,7 +25,6 @@ function App() {
           <Route path="homologaciones" element={features.providerStatusTab ? <HomologacionesPage /> : <Navigate to="/panel" replace />} />
           <Route element={<ProtectedRoute allowedRoles={['ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector']} />}>
             <Route path="reportes" element={<ReportesPage />} />
-            <Route path="homologadas" element={<HomologadasPage />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['supervisor_general', 'administradora']} />}>
             <Route path="configuracion" element={<ConfiguracionPage />} />
