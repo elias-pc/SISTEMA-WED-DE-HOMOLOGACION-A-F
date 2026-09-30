@@ -51,7 +51,7 @@ describe('flujo formal por API en entorno local temporal', () => {
     const reportRow = status.body.rows.find((row: { id: string }) => row.id === providerId);
     expect(reportRow).toMatchObject({
       ruc: '20987654321', tipoDocumento: 'Certificado', estado: 'HOMOLOGADO', subestado: 'VIGENTE',
-      dictamen: 'Conforme', puntajeFinalPonderado: 95, fechaEmision: '2026-09-11', fechaVencimiento: '2027-09-11',
+      dictamen: 'Conforme', puntajeFinalPonderado: 95, fechaEmision: '2026-09-11', fechaVencimiento: '2027-09-06',
     });
     expect(reportRow.diasPorVencer).toEqual(expect.any(Number));
 

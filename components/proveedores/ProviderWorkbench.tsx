@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { ApiError, api } from '../../services/api';
-import type { AuthUser, ExpedienteProveedor, HistorialFlujo, Proveedor, TransicionDisponible } from '../../types';
+import type { AuthUser, ConfiguracionHomologacion, ExpedienteProveedor, HistorialFlujo, Proveedor, TransicionDisponible } from '../../types';
 
 interface Props {
   provider: Proveedor;
   companyId: string;
+  configuration: ConfiguracionHomologacion;
   onChanged: (provider: Proveedor) => void;
   onClose: () => void;
 }
@@ -35,12 +36,20 @@ function toBase64(file: File) {
   });
 }
 
-function ProviderWorkbench({ provider, companyId, onChanged, onClose }: Props) {
+function addDays(dateValue: string, days: number) {
+  const date = new Date(`${dateValue}T00:00:00Z`);
+  if (Number.isNaN(date.valueOf())) return '';
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function ProviderWorkbench({ provider, companyId, configuration, onChanged, onClose }: Props) {
   const [workflow, setWorkflow] = useState<{ provider: Proveedor; transicionesDisponibles: TransicionDisponible[]; historial: HistorialFlujo[] } | null>(null);
   const [dossier, setDossier] = useState<ExpedienteProveedor | null>(null);
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [selectedTransition, setSelectedTransition] = useState<TransicionDisponible | null>(null);
   const [fields, setFields] = useState<Record<string, string | boolean>>({});
+  const [moduleScores, setModuleScores] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -61,6 +70,7 @@ function ProviderWorkbench({ provider, companyId, onChanged, onClose }: Props) {
   const pickTransition = (transition: TransicionDisponible) => {
     setSelectedTransition(transition);
     setFields(Object.fromEntries(transition.datosObligatorios.map((field) => [field, field === 'documentosConformes' ? false : ''])));
+    setModuleScores({});
     setMessage('');
   };
 
@@ -69,7 +79,12 @@ function ProviderWorkbench({ provider, companyId, onChanged, onClose }: Props) {
     if (!selectedTransition || !workflow) return;
     setBusy(true); setMessage('');
     try {
-      const datos = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, key === 'monto' || key === 'puntaje' ? Number(value) : value]));
+      const datos: Record<string, unknown> = Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, key === 'monto' || key === 'puntaje' ? Number(value) : value]));
+      const documentType = configuration.documentTypes.find((item) => item.name === datos.tipoDocumento);
+      if (documentType && typeof datos.fechaEmision === 'string') datos.fechaVencimiento = addDays(datos.fechaEmision, documentType.validityDays);
+      if (selectedTransition.codigo === 'EMITIR_ENTREGABLE') {
+        datos.modulos = configuration.evaluationModules.map((name) => ({ nombre: name, puntaje: moduleScores[name] === '' || moduleScores[name] === undefined ? null : Number(moduleScores[name]) }));
+      }
       const result = await api.applyProviderTransition(provider.id, { transicion: selectedTransition.codigo, datos, motivo: typeof fields.motivo === 'string' ? fields.motivo : undefined, version: workflow.provider.flujo?.version });
       onChanged(result.provider); setSelectedTransition(null); await load(); setMessage('Transición registrada y agregada al expediente.');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudo registrar la transición.'); }
@@ -104,13 +119,26 @@ function ProviderWorkbench({ provider, companyId, onChanged, onClose }: Props) {
     finally { setBusy(false); }
   };
 
+  const renderTransitionField = (field: string) => {
+    if (field === 'ejecutivaId' || field === 'inspectorId') return <label key={field}>{labels[field]}<select required value={String(fields[field] || '')} onChange={(event) => setFields((current) => ({ ...current, [field]: event.target.value }))}><option value="">Seleccionar</option>{(field === 'ejecutivaId' ? selectedUsers.executives : selectedUsers.inspectors).map((user) => <option value={user.id} key={user.id}>{user.name}</option>)}</select></label>;
+    if (field === 'documentosConformes') return <label key={field} className="checkbox-field"><input type="checkbox" checked={Boolean(fields[field])} onChange={(event) => setFields((current) => ({ ...current, [field]: event.target.checked }))} /> {labels[field]}</label>;
+    if (field === 'tipoDocumento') return <label key={field}>{labels[field]}<select required value={String(fields[field] || '')} onChange={(event) => setFields((current) => ({ ...current, [field]: event.target.value }))}><option value="">Seleccionar</option>{configuration.documentTypes.map((item) => <option key={item.name} value={item.name}>{item.name} · {item.validityDays} días</option>)}</select></label>;
+    if (field === 'dictamen') return <label key={field}>{labels[field]}<select required value={String(fields[field] || '')} onChange={(event) => setFields((current) => ({ ...current, [field]: event.target.value }))}><option value="">Seleccionar</option>{configuration.opinions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>;
+    if (field === 'fechaVencimiento' && fields.tipoDocumento && typeof fields.fechaEmision === 'string') {
+      const documentType = configuration.documentTypes.find((item) => item.name === fields.tipoDocumento);
+      const expiration = documentType ? addDays(fields.fechaEmision, documentType.validityDays) : '';
+      return <label key={field}>{labels[field]}<input readOnly value={expiration} aria-describedby="automatic-expiration" /><small id="automatic-expiration" className="secondary-text">Calculada según la vigencia configurada.</small></label>;
+    }
+    return <label key={field}>{labels[field] || field}<input required type={inputType(field)} step={field === 'monto' || field === 'puntaje' ? '0.01' : undefined} value={String(fields[field] || '')} onChange={(event) => setFields((current) => ({ ...current, [field]: event.target.value }))} /></label>;
+  };
+
   return (
     <section className="card workbench" aria-label={`Expediente de ${provider.razonSocial}`}>
       <div className="section-heading"><div><p className="context-label">Expediente operativo</p><h3>{provider.razonSocial}</h3><p className="secondary-text">RUC {provider.ruc} · Paso {workflow?.provider.flujo?.paso ?? provider.flujo?.paso ?? '—'} · {workflow?.provider.flujo?.subestado ?? provider.flujo?.subestado ?? 'Sin estado'}</p></div><button className="btn-secondary" type="button" onClick={onClose}>Cerrar</button></div>
       {message ? <p className={message.includes('No se pudo') ? 'form-error' : 'success-message'} role="status">{message}</p> : null}
       <div className="workbench-grid">
         <section><h4>Acciones disponibles</h4><div className="transition-list">{workflow?.transicionesDisponibles.length ? workflow.transicionesDisponibles.map((transition) => <button key={transition.codigo} type="button" className="btn-secondary" onClick={() => pickTransition(transition)}>{transition.etiqueta}</button>) : <p className="secondary-text">No tienes transiciones disponibles en este estado.</p>}</div>
-          {selectedTransition ? <form className="transition-form" onSubmit={submitTransition}><h4>{selectedTransition.etiqueta}</h4>{selectedTransition.datosObligatorios.map((field) => field === 'ejecutivaId' || field === 'inspectorId' ? <label key={field}>{labels[field]}<select required value={String(fields[field] || '')} onChange={(event) => setFields((current) => ({ ...current, [field]: event.target.value }))}><option value="">Seleccionar</option>{(field === 'ejecutivaId' ? selectedUsers.executives : selectedUsers.inspectors).map((user) => <option value={user.id} key={user.id}>{user.name}</option>)}</select></label> : field === 'documentosConformes' ? <label key={field} className="checkbox-field"><input type="checkbox" checked={Boolean(fields[field])} onChange={(event) => setFields((current) => ({ ...current, [field]: event.target.checked }))} /> {labels[field]}</label> : <label key={field}>{labels[field] || field}<input required type={inputType(field)} step={field === 'monto' || field === 'puntaje' ? '0.01' : undefined} value={String(fields[field] || '')} onChange={(event) => setFields((current) => ({ ...current, [field]: event.target.value }))} /></label>)}<button className="btn-primary" disabled={busy}>Guardar transición</button></form> : null}
+          {selectedTransition ? <form className="transition-form" onSubmit={submitTransition}><h4>{selectedTransition.etiqueta}</h4>{selectedTransition.datosObligatorios.map(renderTransitionField)}{selectedTransition.codigo === 'EMITIR_ENTREGABLE' ? <fieldset className="module-score-fields"><legend>Evaluación por módulos</legend>{configuration.evaluationModules.map((module) => <label key={module}>{module}<input type="number" min="0" max="100" step="0.01" value={moduleScores[module] || ''} onChange={(event) => setModuleScores((current) => ({ ...current, [module]: event.target.value }))} /></label>)}</fieldset> : null}<button className="btn-primary" disabled={busy}>Guardar transición</button></form> : null}
         </section>
         <section><h4>Expediente</h4><div className="dossier-list"><p><strong>Pagos:</strong> {dossier?.payments.length || 0}</p><p><strong>Formularios:</strong> {dossier?.forms.length || 0}</p><p><strong>Visitas:</strong> {dossier?.inspections.length || 0}</p><p><strong>Certificados:</strong> {dossier?.certificates.length || 0}</p></div><label className="upload-control">Agregar documento al expediente<input type="file" onChange={uploadDocument} disabled={busy} /></label>{dossier?.documents.map((document) => <a className="document-link" key={document.id} href={`/api/providers/${provider.id}/documents/${document.id}/content`} target="_blank" rel="noreferrer">{document.original_name} · {Math.ceil(document.byte_size / 1024)} KB</a>)}</section>
         <section><h4>WhatsApp preparado</h4><p className="secondary-text">No se envían mensajes hasta configurar Meta y habilitar el proveedor.</p><form className="transition-form" onSubmit={saveWhatsAppPreferences}><label>Teléfono WhatsApp<input name="phone" defaultValue={dossier?.contactPreferences?.whatsapp_phone || ''} placeholder="51999888777" /></label><label>Origen del consentimiento<input name="source" defaultValue={dossier?.contactPreferences?.whatsapp_opt_in_source || ''} placeholder="Formulario firmado" /></label><label className="checkbox-field"><input name="optIn" type="checkbox" defaultChecked={Boolean(dossier?.contactPreferences?.whatsapp_opt_in)} /> Consentimiento para WhatsApp</label><button className="btn-secondary" disabled={busy}>Guardar preferencia</button></form><p className="secondary-text">Eventos preparados: {dossier?.notifications.length || 0}; no se han enviado a Meta.</p></section>

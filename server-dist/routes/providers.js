@@ -10,6 +10,7 @@ import { confirmDocumentUpload, createDocumentUpload, readDocument, storeDocumen
 import { persistTransitionRecords, providerDossier } from '../provider-records.js';
 import { parseProviderWorkbook } from '../provider-import.js';
 import { buildMyPortfolio } from '../my-portfolio.js';
+import { automaticExpirationDate, normalizeHomologationConfig } from '../homologation-config.js';
 export const providersRouter = Router();
 providersRouter.use(authenticateRequest);
 providersRouter.get('/', async (request, response) => {
@@ -24,10 +25,14 @@ providersRouter.get('/', async (request, response) => {
     if (!canAccessCompany(user, scope.company_id))
         return response.status(403).json({ error: 'Proceso fuera de tu alcance.' });
     const result = await pool.query('SELECT * FROM providers WHERE process_id=$1 ORDER BY created_at DESC', [processId.data]);
+    const attributeRows = result.rowCount ? await pool.query('SELECT provider_id,attribute_key,attribute_value FROM provider_attributes WHERE provider_id=ANY($1::text[])', [result.rows.map((row) => row.id)]) : { rows: [] };
+    const attributesByProvider = new Map();
+    for (const attribute of attributeRows.rows)
+        attributesByProvider.set(attribute.provider_id, { ...(attributesByProvider.get(attribute.provider_id) || {}), [attribute.attribute_key]: attribute.attribute_value });
     const permissionChecks = await Promise.all(result.rows.map(async (row) => ({ row, allowed: await canAccessProvider(user, row) })));
     const visibleRows = permissionChecks.filter((item) => item.allowed).map((item) => item.row);
     response.json({ providers: visibleRows.map((row) => {
-            const provider = mapProvider(row);
+            const provider = mapProvider(row, attributesByProvider.get(String(row.id)) || {});
             const state = workflowStateFromRow(row);
             return { ...provider, transicionesDisponibles: availableTransitions(state, user.role).map(publicTransition) };
         }) });
@@ -38,7 +43,7 @@ function workflowStateFromRow(row) {
 function publicTransition(transition) {
     return { codigo: transition.code, etiqueta: transition.label, datosObligatorios: [...(transition.requiredFields || [])] };
 }
-const createSchema = z.object({ id: z.string().optional(), empresaId: z.string().min(1), procesoId: z.string().min(1), razonSocial: z.string().min(2).max(180), ruc: z.string().regex(/^\d{11}$/), personaContacto: z.string().min(2).max(120), telefonos: z.string().min(6).max(80), email: z.string().email(), direccion: z.string().min(3).max(240), departamento: z.string().min(2).max(80), distrito: z.string().min(2).max(80), actividadPrincipal: z.string().min(2).max(240) });
+const createSchema = z.object({ id: z.string().optional(), empresaId: z.string().min(1), procesoId: z.string().min(1), razonSocial: z.string().min(2).max(180), ruc: z.string().regex(/^\d{11}$/), personaContacto: z.string().min(2).max(120), telefonos: z.string().min(6).max(80), email: z.string().email(), direccion: z.string().min(3).max(240), departamento: z.string().min(2).max(80), distrito: z.string().min(2).max(80), actividadPrincipal: z.string().min(2).max(240), atributos: z.record(z.string().min(1).max(80), z.string().trim().max(180)).default({}) });
 providersRouter.post('/', requireRoles('supervisor_general', 'administradora'), validateBody(createSchema), async (request, response) => {
     const user = request.user, b = request.body;
     const process = await pool.query('SELECT company_id,executive_id FROM homologation_processes WHERE id=$1', [b.procesoId]);
@@ -48,7 +53,9 @@ providersRouter.post('/', requireRoles('supervisor_general', 'administradora'), 
         return response.status(403).json({ error: 'Empresa fuera de tu alcance.' });
     const result = await pool.query(`INSERT INTO providers(id,company_id,process_id,legal_name,tax_id,contact_name,phones,email,address,department,district,main_activity,executive_status)
  VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'Contactado') RETURNING *`, [b.id || randomUUID(), b.empresaId, b.procesoId, b.razonSocial, b.ruc, b.personaContacto, b.telefonos, b.email, b.direccion, b.departamento, b.distrito, b.actividadPrincipal]);
-    response.status(201).json({ provider: mapProvider(result.rows[0]) });
+    for (const [key, value] of Object.entries(b.atributos))
+        await pool.query('INSERT INTO provider_attributes(provider_id,attribute_key,attribute_value) VALUES($1,$2,$3)', [result.rows[0].id, key, value]);
+    response.status(201).json({ provider: mapProvider(result.rows[0], b.atributos) });
 });
 providersRouter.patch('/:id/status', (_request, response) => response.status(410).json({ error: 'El cambio libre de estado fue retirado. Utiliza una transición válida del flujo.' }));
 const transitionSchema = z.object({
@@ -64,10 +71,12 @@ async function importScope(request, empresaId, procesoId) {
         return { error: 'El proceso no pertenece a la empresa indicada.' };
     if (!canAccessCompany(request.user, empresaId))
         return { error: 'Empresa fuera de tu alcance.' };
-    return { companyId: empresaId };
+    const company = await pool.query('SELECT homologation_config FROM companies WHERE id=$1', [empresaId]);
+    const filterLabels = Array.isArray(company.rows[0]?.homologation_config?.filters) ? company.rows[0].homologation_config.filters.map((item) => String(item)) : [];
+    return { companyId: empresaId, filterLabels };
 }
-async function rowsWithExistingRucErrors(processId, contentBase64) {
-    const rows = parseProviderWorkbook(contentBase64);
+async function rowsWithExistingRucErrors(processId, contentBase64, filterLabels = []) {
+    const rows = parseProviderWorkbook(contentBase64, filterLabels);
     const rucs = rows.flatMap((row) => row.provider ? [row.provider.ruc] : []);
     const existing = rucs.length ? await pool.query('SELECT tax_id FROM providers WHERE process_id=$1 AND tax_id=ANY($2::varchar[])', [processId, rucs]) : { rows: [] };
     const existingRucs = new Set(existing.rows.map((row) => row.tax_id));
@@ -87,7 +96,7 @@ providersRouter.post('/import/preview', requireRoles('supervisor_general', 'admi
     if ('error' in scope)
         return response.status(400).json(scope);
     try {
-        const rows = await rowsWithExistingRucErrors(body.procesoId, body.contentBase64);
+        const rows = await rowsWithExistingRucErrors(body.procesoId, body.contentBase64, scope.filterLabels);
         response.json({ summary: importSummary(rows), rows: rows.map(({ raw, ...row }) => row) });
     }
     catch (error) {
@@ -101,7 +110,7 @@ providersRouter.post('/import', requireRoles('supervisor_general', 'administrado
         return response.status(400).json(scope);
     let rows;
     try {
-        rows = await rowsWithExistingRucErrors(body.procesoId, body.contentBase64);
+        rows = await rowsWithExistingRucErrors(body.procesoId, body.contentBase64, scope.filterLabels);
     }
     catch (error) {
         return response.status(422).json({ error: error instanceof Error ? error.message : 'No se pudo leer el archivo Excel.' });
@@ -283,7 +292,7 @@ providersRouter.post('/:id/transitions', validateBody(transitionSchema), async (
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const found = await client.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1 FOR UPDATE OF p`, [request.params.id]);
+        const found = await client.query(`SELECT p.*,h.executive_id,c.homologation_config FROM providers p JOIN homologation_processes h ON h.id=p.process_id JOIN companies c ON c.id=p.company_id WHERE p.id=$1 FOR UPDATE OF p`, [request.params.id]);
         if (!found.rowCount) {
             await client.query('ROLLBACK');
             return response.status(404).json({ error: 'Proveedor no encontrado.' });
@@ -299,6 +308,19 @@ providersRouter.post('/:id/transitions', validateBody(transitionSchema), async (
         }
         const from = workflowStateFromRow(row);
         const transitionData = body.motivo && body.datos.motivo === undefined ? { ...body.datos, motivo: body.motivo } : body.datos;
+        if (body.transicion === 'EMITIR_ENTREGABLE' || body.transicion === 'REGISTRAR_CERTIFICADO_EXISTENTE') {
+            const configuration = normalizeHomologationConfig(row.homologation_config);
+            const documentType = configuration.documentTypes.find((item) => item.name === String(transitionData.tipoDocumento || ''));
+            if (!documentType) {
+                await client.query('ROLLBACK');
+                return response.status(422).json({ error: 'Selecciona un tipo de documento configurado para esta empresa.' });
+            }
+            const expiration = automaticExpirationDate(transitionData.fechaEmision, documentType.validityDays);
+            if (expiration)
+                transitionData.fechaVencimiento = expiration;
+            if (Array.isArray(transitionData.modulos))
+                transitionData.modulos = transitionData.modulos.filter((item) => item && typeof item === 'object' && configuration.evaluationModules.includes(String(item.nombre || '')));
+        }
         const validation = validateTransition(from, body.transicion, user.role, transitionData);
         if (!validation.ok) {
             await client.query('ROLLBACK');

@@ -57,15 +57,18 @@ reportsRouter.get('/status', async (request, response) => {
     SELECT p.id,p.tax_id AS "ruc",p.legal_name AS "razonSocial",
       COALESCE(certificate.document_type,documents.document_types,'') AS "tipoDocumento",
       COALESCE(filter_one.attribute_value,'') AS "filtro1",
+      COALESCE(filter_two.attribute_value,'') AS "filtro2",
       p.workflow_status AS "estado",p.workflow_substatus AS "subestado",
       COALESCE(certificate.opinion,'') AS "dictamen",certificate.score::float8 AS "puntajeFinalPonderado",
       certificate.issued_on::text AS "fechaEmision",certificate.expires_on::text AS "fechaVencimiento",
       CASE WHEN certificate.expires_on IS NULL THEN NULL ELSE (certificate.expires_on-current_date)::int END AS "diasPorVencer",
       CONCAT_WS(', ',NULLIF(documents.deliverables,''),NULLIF(certificate.document_type,'')) AS "entregables",
+      COALESCE(certificate.modules,'') AS "modulos",
       documents.deliverable_documents AS "documentosEntregables"
     FROM providers p
     LEFT JOIN LATERAL (SELECT attribute_value FROM provider_attributes WHERE provider_id=p.id AND attribute_key='filtro_1' LIMIT 1) filter_one ON true
-    LEFT JOIN LATERAL (SELECT document_type,opinion,score,issued_on,expires_on FROM provider_certificates WHERE provider_id=p.id ORDER BY expires_on DESC,created_at DESC LIMIT 1) certificate ON true
+    LEFT JOIN LATERAL (SELECT attribute_value FROM provider_attributes WHERE provider_id=p.id AND attribute_key='filtro_2' LIMIT 1) filter_two ON true
+    LEFT JOIN LATERAL (SELECT document_type,opinion,score,issued_on,expires_on,COALESCE((SELECT string_agg(COALESCE(module->>'nombre',module->>'name',module::text),', ') FROM jsonb_array_elements(COALESCE(modules,'[]'::jsonb)) module),'') AS modules FROM provider_certificates WHERE provider_id=p.id ORDER BY expires_on DESC,created_at DESC LIMIT 1) certificate ON true
     LEFT JOIN LATERAL (
       SELECT string_agg(category,', ' ORDER BY created_at DESC) AS document_types,
         string_agg(original_name,', ' ORDER BY created_at DESC) AS deliverables,

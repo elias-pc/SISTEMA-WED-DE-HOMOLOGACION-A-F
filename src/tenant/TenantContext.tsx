@@ -16,7 +16,7 @@ export function TenantProvider({children}:{children:ReactNode}){
  const effectiveProcesoId=procesosDisponibles.some(i=>i.id===selectedProcesoId)?selectedProcesoId:procesosDisponibles[0]?.id||'';
  const selectedEmpresa=empresas.find(i=>i.id===effectiveEmpresaId)||null;const selectedProceso=procesos.find(i=>i.id===effectiveProcesoId)||null;
  useEffect(()=>{if(effectiveEmpresaId)localStorage.setItem(SELECTED_KEY,effectiveEmpresaId)},[effectiveEmpresaId]);
- const createEmpresaConProceso=async(empresa:Empresa,proceso:ProcesoHomologacion)=>{const createdCompany=await api.createCompany(empresa);const createdProcess=await api.createProcess(proceso);setEmpresas(current=>[...current,createdCompany.company]);setProcesos(current=>[...current,createdProcess.process]);setSelectedEmpresaId(empresa.id);setSelectedProcesoId(proceso.id)};
+ const createEmpresaConProceso=async(empresa:Empresa,proceso:ProcesoHomologacion)=>{const createdCompany=await api.createCompany(empresa);const createdProcess=await api.createProcess(proceso);setEmpresas(current=>[...current,createdCompany.company]);setProcesos(current=>[...current,createdProcess.process]);setSelectedEmpresaId(createdCompany.company.id);setSelectedProcesoId(createdProcess.process.id)};
  const value=useMemo(()=>({empresas,procesos,empresasDisponibles,selectedEmpresa,selectedProceso,loading,selectEmpresa:setSelectedEmpresaId,selectProceso:setSelectedProcesoId,createEmpresaConProceso}),[empresas,procesos,selectedEmpresa,selectedProceso,loading]);
  return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>;
 }

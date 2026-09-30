@@ -17,7 +17,7 @@ function valueFor(raw, key) {
     const header = Object.keys(raw).find((candidate) => aliases[key].includes(normalizeKey(candidate)));
     return header ? normalize(raw[header]) : '';
 }
-export function parseProviderWorkbook(contentBase64) {
+export function parseProviderWorkbook(contentBase64, filterLabels = []) {
     const buffer = Buffer.from(contentBase64, 'base64');
     if (!buffer.length || buffer.length > 2 * 1024 * 1024)
         throw new Error('El archivo Excel debe pesar entre 1 byte y 2 MB.');
@@ -50,6 +50,11 @@ export function parseProviderWorkbook(contentBase64) {
         const attributes = Object.fromEntries(Object.entries(raw)
             .filter(([header, value]) => value && !knownHeaders.has(normalizeKey(header)))
             .map(([header, value]) => [normalizeKey(header).replace(/ /g, '_').slice(0, 80), value]));
+        filterLabels.forEach((label, index) => {
+            const header = Object.keys(raw).find((candidate) => normalizeKey(candidate) === normalizeKey(label));
+            if (header && raw[header])
+                attributes[`filtro_${index + 1}`] = raw[header];
+        });
         return {
             rowNumber: index + 2, raw, errors,
             provider: errors.length ? undefined : { ...values, attributes },

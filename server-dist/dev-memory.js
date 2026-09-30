@@ -10,10 +10,11 @@ import { config } from './config.js';
 import { expiryTransition } from './certificate-expiry.js';
 import { buildBalancedAssignmentPlan, buildQuantityAssignmentPlan } from './assignment-planning.js';
 import { buildMyPortfolio } from './my-portfolio.js';
+import { automaticExpirationDate, defaultHomologationConfig, normalizeHomologationConfig } from './homologation-config.js';
 export const memoryRouter = Router();
 const companies = [
-    { id: 'decal', razonSocial: 'DECAL S.A.C.', ruc: '20512345678', nombreComercial: 'DECAL', contacto: 'María López', email: 'contacto@decal.com', telefono: '987654321', estado: 'Activa' },
-    { id: 'ufitec', razonSocial: 'UFITEC S.A.C.', ruc: '20698765432', nombreComercial: 'UFITEC', contacto: 'José Ramos', email: 'contacto@ufitec.com', telefono: '912345678', estado: 'Activa' },
+    { id: 'decal', razonSocial: 'DECAL S.A.C.', ruc: '20512345678', nombreComercial: 'DECAL', contacto: 'María López', email: 'contacto@decal.com', telefono: '987654321', estado: 'Activa', configuracionHomologacion: defaultHomologationConfig },
+    { id: 'ufitec', razonSocial: 'UFITEC S.A.C.', ruc: '20698765432', nombreComercial: 'UFITEC', contacto: 'José Ramos', email: 'contacto@ufitec.com', telefono: '912345678', estado: 'Activa', configuracionHomologacion: defaultHomologationConfig },
 ];
 const processes = [
     { id: 'proc-decal-2026', empresaId: 'decal', codigo: 'DECAL-2026-001', nombre: 'Homologación de proveedores 2026', fechaInicio: '2026-01-15', fechaLimite: '2026-10-30', estado: 'En curso', ejecutivaId: 'eje-decal' },
@@ -139,7 +140,7 @@ memoryRouter.post('/auth/logout', (request, response) => { const token = request
     sessions.delete(token); clearSessionCookie(response); response.status(204).end(); });
 memoryRouter.get('/companies', requireUser, (_request, response) => { const user = response.locals.user; response.json({ companies: companies.filter(item => scoped(user, item.id)) }); });
 memoryRouter.post('/companies', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
-    return response.status(403).json({ error: 'No tienes permiso.' }); companies.push(request.body); response.status(201).json({ company: request.body }); });
+    return response.status(403).json({ error: 'No tienes permiso.' }); const company = { ...request.body, configuracionHomologacion: normalizeHomologationConfig(request.body.configuracionHomologacion) }; companies.push(company); response.status(201).json({ company }); });
 memoryRouter.get('/processes', requireUser, (_request, response) => { const user = response.locals.user; response.json({ processes: processes.filter(item => scoped(user, item.empresaId) || (user.role === 'ejecutiva' && providers.some(provider => provider.procesoId === item.id && activeExecutiveIds(provider).includes(user.id)))) }); });
 memoryRouter.post('/processes', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); processes.push(request.body); response.status(201).json({ process: request.body }); });
@@ -162,7 +163,8 @@ memoryRouter.post('/providers', requireUser, (request, response) => { const user
     return response.status(403).json({ error: 'No tienes permiso.' }); const provider = { ...request.body, id: request.body.id || randomUUID(), estado: 'En proceso', estadoEjecutiva: 'Contactado', calificacion: 0, fechaRegistro: new Date().toISOString().slice(0, 10), vigencia: 'N/A', flujo: { paso: 2, estado: 'PENDIENTE_INSCRIPCION', subestado: 'REGISTRADO', version: 0 } }; providers.unshift(provider); response.status(201).json({ provider: { ...provider, transicionesDisponibles: memoryTransitions(provider, user) } }); });
 memoryRouter.post('/providers/import/preview', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); try {
-    const rows = parseProviderWorkbook(String(request.body.contentBase64 || '')).map(row => row.provider && providers.some(item => item.procesoId === request.body.procesoId && item.ruc === row.provider.ruc) ? { ...row, provider: undefined, errors: [...row.errors, 'El RUC ya existe en este proceso.'] } : row);
+    const company = companies.find(item => item.id === request.body.empresaId);
+    const rows = parseProviderWorkbook(String(request.body.contentBase64 || ''), company?.configuracionHomologacion.filters || []).map(row => row.provider && providers.some(item => item.procesoId === request.body.procesoId && item.ruc === row.provider.ruc) ? { ...row, provider: undefined, errors: [...row.errors, 'El RUC ya existe en este proceso.'] } : row);
     const ready = rows.filter(row => row.provider && !row.errors.length).length;
     response.json({ summary: { totalRows: rows.length, readyRows: ready, rejectedRows: rows.length - ready }, rows: rows.map(({ raw, ...row }) => row) });
 }
@@ -171,7 +173,8 @@ catch (error) {
 } });
 memoryRouter.post('/providers/import', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); try {
-    const parsed = parseProviderWorkbook(String(request.body.contentBase64 || ''));
+    const company = companies.find(item => item.id === request.body.empresaId);
+    const parsed = parseProviderWorkbook(String(request.body.contentBase64 || ''), company?.configuracionHomologacion.filters || []);
     const rows = parsed.map(row => { if (!row.provider || providers.some(item => item.procesoId === request.body.procesoId && item.ruc === row.provider.ruc))
         return row.provider ? { ...row, provider: undefined, errors: [...row.errors, 'El RUC ya existe en este proceso.'] } : row; const item = { id: randomUUID(), empresaId: request.body.empresaId, procesoId: request.body.procesoId, razonSocial: row.provider.razonSocial, ruc: row.provider.ruc, personaContacto: row.provider.personaContacto, telefonos: row.provider.telefonos, email: row.provider.email, direccion: row.provider.direccion, departamento: row.provider.departamento, distrito: row.provider.distrito, actividadPrincipal: row.provider.actividadPrincipal, atributos: row.provider.attributes, estado: 'En proceso', calificacion: 0, fechaRegistro: new Date().toISOString().slice(0, 10), vigencia: 'N/A', flujo: { paso: 2, estado: 'PENDIENTE_INSCRIPCION', subestado: 'REGISTRADO', version: 0 } }; providers.unshift(item); return row; });
     const imported = rows.filter(row => row.provider && !row.errors.length).length;
@@ -282,6 +285,18 @@ memoryRouter.post('/providers/:id/transitions', requireUser, (request, response)
     const state = memoryState(provider), code = request.body.transicion, rawData = request.body.datos || {}, data = request.body.motivo && rawData.motivo === undefined ? { ...rawData, motivo: request.body.motivo } : rawData;
     if (request.body.version !== undefined && request.body.version !== provider.flujo.version)
         return response.status(409).json({ error: 'El flujo fue actualizado por otro usuario. Recarga los datos antes de continuar.' });
+    if (code === 'EMITIR_ENTREGABLE' || code === 'REGISTRAR_CERTIFICADO_EXISTENTE') {
+        const company = companies.find(item => item.id === provider.empresaId);
+        const config = normalizeHomologationConfig(company?.configuracionHomologacion);
+        const documentType = config.documentTypes.find(item => item.name === String(data.tipoDocumento || ''));
+        if (!documentType)
+            return response.status(422).json({ error: 'Selecciona un tipo de documento configurado para esta empresa.' });
+        const expiration = automaticExpirationDate(data.fechaEmision, documentType.validityDays);
+        if (expiration)
+            data.fechaVencimiento = expiration;
+        if (Array.isArray(data.modulos))
+            data.modulos = data.modulos.filter((item) => item && typeof item === 'object' && config.evaluationModules.includes(String(item.nombre || '')));
+    }
     const validation = validateTransition(state, code, user.role, data);
     if (!validation.ok)
         return response.status(validation.error.includes('rol') ? 403 : 'missingFields' in validation ? 422 : 409).json({ error: validation.error, camposFaltantes: 'missingFields' in validation ? validation.missingFields : [] });
@@ -314,7 +329,8 @@ memoryRouter.get('/reports/status', requireUser, (request, response) => {
     const rows = providers.filter(item => item.procesoId === processId && canSeeProvider(user, item)).sort((a, b) => String(a.razonSocial).localeCompare(String(b.razonSocial))).map(provider => {
         const records = dossier(provider.id), certificate = records.certificates[0], attributes = provider.atributos || {};
         const daysToExpiry = certificate?.expires_on ? Math.floor((new Date(String(certificate.expires_on)).getTime() - new Date().getTime()) / 86_400_000) : null;
-        return { id: provider.id, ruc: provider.ruc, razonSocial: provider.razonSocial, tipoDocumento: String(certificate?.document_type || records.documents[0]?.category || ''), filtro1: String(attributes.filtro_1 || ''), estado: String(provider.flujo?.estado || ''), subestado: String(provider.flujo?.subestado || ''), dictamen: String(certificate?.opinion || ''), puntajeFinalPonderado: certificate?.score === undefined || certificate?.score === null ? null : Number(certificate.score), fechaEmision: certificate?.issued_on || null, fechaVencimiento: certificate?.expires_on || null, diasPorVencer: Number.isFinite(daysToExpiry) ? daysToExpiry : null, entregables: records.documents.map(item => item.original_name).concat(certificate?.document_type ? [String(certificate.document_type)] : []).join(', '), documentosEntregables: records.documents.map(item => ({ id: String(item.id), originalName: String(item.original_name), mimeType: String(item.mime_type), byteSize: Number(item.byte_size || 0) })) };
+        const modules = Array.isArray(certificate?.modules) ? certificate.modules.map((item) => typeof item === 'object' && item ? String(item.nombre || item.name || '') : String(item)).filter(Boolean).join(', ') : '';
+        return { id: provider.id, ruc: provider.ruc, razonSocial: provider.razonSocial, tipoDocumento: String(certificate?.document_type || records.documents[0]?.category || ''), filtro1: String(attributes.filtro_1 || ''), filtro2: String(attributes.filtro_2 || ''), estado: String(provider.flujo?.estado || ''), subestado: String(provider.flujo?.subestado || ''), dictamen: String(certificate?.opinion || ''), puntajeFinalPonderado: certificate?.score === undefined || certificate?.score === null ? null : Number(certificate.score), fechaEmision: certificate?.issued_on || null, fechaVencimiento: certificate?.expires_on || null, diasPorVencer: Number.isFinite(daysToExpiry) ? daysToExpiry : null, entregables: records.documents.map(item => item.original_name).concat(certificate?.document_type ? [String(certificate.document_type)] : []).join(', '), modulos: modules, documentosEntregables: records.documents.map(item => ({ id: String(item.id), originalName: String(item.original_name), mimeType: String(item.mime_type), byteSize: Number(item.byte_size || 0) })) };
     });
     response.json({ rows });
 });

@@ -11,12 +11,15 @@ export interface StatusColumn {
   width: number;
 }
 
-export const statusColumns: readonly StatusColumn[] = [
+export function buildStatusColumns(filterLabels: readonly string[] = []): readonly StatusColumn[] {
+  const [filter1 = 'Filtro 1', filter2 = 'Filtro 2'] = filterLabels;
+  return [
   { key: 'numero', label: 'Nro', fixed: true, kind: 'number', width: 6 },
   { key: 'ruc', label: 'RUC', fixed: true, kind: 'text', width: 14 },
   { key: 'razonSocial', label: 'Razón Social', fixed: true, kind: 'text', width: 27 },
   { key: 'tipoDocumento', label: 'Tipo de Documento', fixed: false, kind: 'text', width: 18 },
-  { key: 'filtro1', label: 'Filtro 1', fixed: false, kind: 'text', width: 15 },
+  { key: 'filtro1', label: filter1, fixed: false, kind: 'text', width: 15 },
+  { key: 'filtro2', label: filter2, fixed: false, kind: 'text', width: 15 },
   { key: 'estado', label: 'Status', fixed: false, kind: 'text', width: 15 },
   { key: 'subestado', label: 'Sub-Status', fixed: false, kind: 'text', width: 20 },
   { key: 'dictamen', label: 'Dictamen', fixed: false, kind: 'text', width: 16 },
@@ -25,13 +28,17 @@ export const statusColumns: readonly StatusColumn[] = [
   { key: 'fechaVencimiento', label: 'Fecha de Vcto.', fixed: false, kind: 'date', width: 16 },
   { key: 'diasPorVencer', label: 'Días por Vencer', fixed: false, kind: 'number', width: 15 },
   { key: 'entregables', label: 'Entregables', fixed: false, kind: 'text', width: 25 },
-] as const;
+  { key: 'modulos', label: 'Módulos', fixed: false, kind: 'text', width: 28 },
+  ] as const;
+}
+
+export const statusColumns = buildStatusColumns();
 
 export const optionalStatusColumnKeys = statusColumns.filter((column) => !column.fixed).map((column) => column.key);
 
-export function visibleStatusColumns(selectedOptional: readonly StatusColumnKey[]) {
+export function visibleStatusColumns(selectedOptional: readonly StatusColumnKey[], definitions: readonly StatusColumn[] = statusColumns) {
   const selected = new Set(selectedOptional);
-  return statusColumns.filter((column) => column.fixed || selected.has(column.key));
+  return definitions.filter((column) => column.fixed || selected.has(column.key));
 }
 
 export function rawStatusValue(row: EstadoProveedorReporte, column: StatusColumn, index: number) {
@@ -59,8 +66,8 @@ function excelValue(value: unknown, column: StatusColumn) {
   return /^\d{4}-\d{2}-\d{2}$/.test(datePart) ? new Date(`${datePart}T00:00:00`) : String(value);
 }
 
-export function buildStatusExportMatrix(rows: readonly EstadoProveedorReporte[], selectedOptional: readonly StatusColumnKey[]) {
-  const columns = visibleStatusColumns(selectedOptional);
+export function buildStatusExportMatrix(rows: readonly EstadoProveedorReporte[], selectedOptional: readonly StatusColumnKey[], definitions: readonly StatusColumn[] = statusColumns) {
+  const columns = visibleStatusColumns(selectedOptional, definitions);
   return {
     columns,
     matrix: [
@@ -70,9 +77,9 @@ export function buildStatusExportMatrix(rows: readonly EstadoProveedorReporte[],
   };
 }
 
-export async function buildStatusWorkbookBytes(rows: readonly EstadoProveedorReporte[], selectedOptional: readonly StatusColumnKey[]) {
+export async function buildStatusWorkbookBytes(rows: readonly EstadoProveedorReporte[], selectedOptional: readonly StatusColumnKey[], definitions: readonly StatusColumn[] = statusColumns) {
   const XLSX = await import('xlsx');
-  const { columns, matrix } = buildStatusExportMatrix(rows, selectedOptional);
+  const { columns, matrix } = buildStatusExportMatrix(rows, selectedOptional, definitions);
   const worksheet = XLSX.utils.aoa_to_sheet(matrix, { cellDates: true, dateNF: 'dd/mm/yyyy' });
   worksheet['!cols'] = columns.map((column) => ({ wch: column.width }));
   worksheet['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(columns.length - 1)}${Math.max(rows.length + 1, 1)}` };
@@ -89,8 +96,8 @@ export async function buildStatusWorkbookBytes(rows: readonly EstadoProveedorRep
   return { bytes, columnCount: columns.length };
 }
 
-export async function downloadStatusWorkbook(rows: readonly EstadoProveedorReporte[], selectedOptional: readonly StatusColumnKey[], processCode: string) {
-  const { bytes, columnCount } = await buildStatusWorkbookBytes(rows, selectedOptional);
+export async function downloadStatusWorkbook(rows: readonly EstadoProveedorReporte[], selectedOptional: readonly StatusColumnKey[], processCode: string, definitions: readonly StatusColumn[] = statusColumns) {
+  const { bytes, columnCount } = await buildStatusWorkbookBytes(rows, selectedOptional, definitions);
   const url = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
   const link = document.createElement('a');
   link.href = url;

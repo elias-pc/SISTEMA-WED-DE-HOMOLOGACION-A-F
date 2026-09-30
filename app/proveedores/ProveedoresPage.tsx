@@ -16,17 +16,19 @@ function ProveedoresPage() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [attributes, setAttributes] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<Proveedor | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importBusy, setImportBusy] = useState(false);
   const canEdit = user?.role === 'administradora' || user?.role === 'supervisor_general';
+  const canOpenProviderWorkbench = Boolean(user && user.role !== 'cliente' && user.role !== 'supervisor_empresa');
 
   const proveedoresFiltrados = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return proveedores;
-    return proveedores.filter((proveedor) => proveedor.razonSocial.toLowerCase().includes(term) || proveedor.ruc.includes(term) || proveedor.distrito.toLowerCase().includes(term));
+    return proveedores.filter((proveedor) => proveedor.razonSocial.toLowerCase().includes(term) || proveedor.ruc.includes(term) || proveedor.direccion.toLowerCase().includes(term) || proveedor.departamento.toLowerCase().includes(term) || proveedor.distrito.toLowerCase().includes(term) || Object.values(proveedor.atributos || {}).some((value) => value.toLowerCase().includes(term)));
   }, [proveedores, search]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -37,8 +39,8 @@ function ProveedoresPage() {
       return;
     }
     try {
-      await addProveedor({ ...form, id: crypto.randomUUID(), empresaId: selectedEmpresa.id, procesoId: selectedProceso.id, estado: 'En proceso', estadoEjecutiva: 'Contactado', calificacion: 0, fechaRegistro: new Date().toLocaleDateString('es-PE'), vigencia: 'N/A' });
-      setForm(emptyForm); setShowForm(false); setMessage('Proveedor registrado correctamente.');
+      await addProveedor({ ...form, atributos: attributes, id: crypto.randomUUID(), empresaId: selectedEmpresa.id, procesoId: selectedProceso.id, estado: 'En proceso', estadoEjecutiva: 'Contactado', calificacion: 0, fechaRegistro: new Date().toLocaleDateString('es-PE'), vigencia: 'N/A' });
+      setForm(emptyForm); setAttributes({}); setShowForm(false); setMessage('Proveedor registrado correctamente.');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudo registrar el proveedor.'); }
   };
 
@@ -77,6 +79,9 @@ function ProveedoresPage() {
             {Object.entries({ ruc: 'RUC', razonSocial: 'Razón social', personaContacto: 'Persona de contacto', telefonos: 'Teléfono', email: 'Correo electrónico', direccion: 'Dirección', departamento: 'Departamento', distrito: 'Distrito', actividadPrincipal: 'Actividad principal' }).map(([field, label]) => (
               <label key={field}>{label}<input type={field === 'email' ? 'email' : 'text'} inputMode={field === 'ruc' ? 'numeric' : undefined} minLength={field === 'ruc' ? 11 : undefined} maxLength={field === 'ruc' ? 11 : undefined} value={form[field as keyof typeof form]} onChange={(event) => setField(field as keyof typeof emptyForm, event.target.value)} required /></label>
             ))}
+            {selectedEmpresa?.configuracionHomologacion.filters.map((label, index) => (
+              <label key={label}>{label}<input type="text" value={attributes[`filtro_${index + 1}`] || ''} onChange={(event) => setAttributes((current) => ({ ...current, [`filtro_${index + 1}`]: event.target.value }))} /></label>
+            ))}
             <button className="btn-primary" type="submit">Guardar proveedor</button>
           </form>
         ) : null}
@@ -84,9 +89,9 @@ function ProveedoresPage() {
         {message ? <p className="success-message" role="status">{message}</p> : null}
         {importPreview ? <section className="import-preview"><h3>Vista previa: {importFile?.name}</h3><p><strong>{importPreview.summary.readyRows}</strong> filas listas · <strong>{importPreview.summary.rejectedRows}</strong> rechazadas de {importPreview.summary.totalRows}.</p>{importPreview.summary.readyRows ? <button type="button" className="btn-primary" onClick={confirmImport} disabled={importBusy}>Confirmar importación</button> : null}<ul>{importPreview.rows.filter((row) => row.errors.length).slice(0, 8).map((row) => <li key={row.rowNumber}>Fila {row.rowNumber}: {row.errors.join(' ')}</li>)}</ul></section> : null}
         <input className="search-input" type="search" placeholder="Buscar proveedor, RUC o distrito..." value={search} onChange={(event) => setSearch(event.target.value)} />
-        <ProveedoresTable proveedores={proveedoresFiltrados} onSelect={setSelectedProvider} />
+        <ProveedoresTable proveedores={proveedoresFiltrados} filterLabels={selectedEmpresa?.configuracionHomologacion.filters || []} showAction={canOpenProviderWorkbench} onSelect={setSelectedProvider} />
       </section>
-      {selectedProvider && selectedEmpresa ? <ProviderWorkbench provider={selectedProvider} companyId={selectedEmpresa.id} onChanged={(provider) => { replaceProveedor(provider); setSelectedProvider(provider); }} onClose={() => setSelectedProvider(null)} /> : null}
+      {canOpenProviderWorkbench && selectedProvider && selectedEmpresa ? <ProviderWorkbench provider={selectedProvider} companyId={selectedEmpresa.id} configuration={selectedEmpresa.configuracionHomologacion} onChanged={(provider) => { replaceProveedor(provider); setSelectedProvider(provider); }} onClose={() => setSelectedProvider(null)} /> : null}
     </div>
   );
 }

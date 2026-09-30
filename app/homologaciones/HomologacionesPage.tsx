@@ -19,7 +19,7 @@ function HomologacionesPage() {
         </div>
       </section>
 
-      <ProviderStatusTable processId={selectedProceso.id} processCode={selectedProceso.codigo} />
+      <ProviderStatusTable processId={selectedProceso.id} processCode={selectedProceso.codigo} filterLabels={selectedEmpresa?.configuracionHomologacion.filters || []} />
     </div>
   );
 }

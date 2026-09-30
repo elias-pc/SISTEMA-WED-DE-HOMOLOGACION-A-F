@@ -25,6 +25,7 @@ export interface Proveedor {
   flujo?: FlujoProveedor;
   ejecutivaAsignadaId?: string;
   inspectorAsignadoId?: string;
+  atributos?: Record<string, string>;
   transicionesDisponibles?: TransicionDisponible[];
 }
 
@@ -95,6 +96,7 @@ export interface EstadoProveedorReporte {
   razonSocial:string;
   tipoDocumento:string;
   filtro1:string;
+  filtro2:string;
   estado:string;
   subestado:string;
   dictamen:string;
@@ -103,6 +105,7 @@ export interface EstadoProveedorReporte {
   fechaVencimiento:string|null;
   diasPorVencer:number|null;
   entregables:string;
+  modulos:string;
   documentosEntregables:DocumentoEntregable[];
 }
 export interface ReporteEstadoProveedores { rows:EstadoProveedorReporte[] }
@@ -145,6 +148,8 @@ export interface AuthUser {
 
 export type EmpresaEstado = 'Activa' | 'Inactiva' | 'Archivada';
 export type ProcesoEstado = 'Planificación' | 'En curso' | 'Suspendido' | 'Finalizado';
+export interface TipoDocumentoHomologacion { name:string; validityDays:number }
+export interface ConfiguracionHomologacion { filters:string[]; documentTypes:TipoDocumentoHomologacion[]; opinions:string[]; evaluationModules:string[] }
 
 export interface Empresa {
   id: string;
@@ -155,6 +160,7 @@ export interface Empresa {
   email: string;
   telefono: string;
   estado: EmpresaEstado;
+  configuracionHomologacion: ConfiguracionHomologacion;
 }
 
 export interface ProcesoHomologacion {

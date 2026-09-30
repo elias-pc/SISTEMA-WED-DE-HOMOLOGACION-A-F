@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../services/api';
-import { downloadStatusWorkbook, formatStatusValue, optionalStatusColumnKeys, rawStatusValue, statusColumns, visibleStatusColumns, type StatusColumnKey } from '../../services/statusTable';
+import { buildStatusColumns, downloadStatusWorkbook, formatStatusValue, optionalStatusColumnKeys, rawStatusValue, visibleStatusColumns, type StatusColumnKey } from '../../services/statusTable';
 import type { EstadoProveedorReporte } from '../../types';
 import DeliverablesModal from './DeliverablesModal';
 
 interface Props {
   processId: string;
   processCode: string;
+  filterLabels: string[];
 }
 
-const optionalColumns = statusColumns.filter((column) => !column.fixed);
-
-function ProviderStatusTable({ processId, processCode }: Props) {
+function ProviderStatusTable({ processId, processCode, filterLabels }: Props) {
   const [rows, setRows] = useState<EstadoProveedorReporte[]>([]);
   const [selectedOptional, setSelectedOptional] = useState<StatusColumnKey[]>([...optionalStatusColumnKeys]);
   const [selectedProvider, setSelectedProvider] = useState<EstadoProveedorReporte | null>(null);
@@ -44,7 +43,9 @@ function ProviderStatusTable({ processId, processCode }: Props) {
     };
   }, [filterOpen]);
 
-  const columns = useMemo(() => visibleStatusColumns(selectedOptional), [selectedOptional]);
+  const definitions = useMemo(() => buildStatusColumns(filterLabels), [filterLabels]);
+  const optionalColumns = useMemo(() => definitions.filter((column) => !column.fixed), [definitions]);
+  const columns = useMemo(() => visibleStatusColumns(selectedOptional, definitions), [selectedOptional, definitions]);
 
   const toggleColumn = (key: StatusColumnKey) => {
     setSelectedOptional((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
@@ -54,7 +55,7 @@ function ProviderStatusTable({ processId, processCode }: Props) {
     if (!rows.length) return;
     setExporting(true); setMessage('');
     try {
-      const columnCount = await downloadStatusWorkbook(rows, selectedOptional, processCode);
+      const columnCount = await downloadStatusWorkbook(rows, selectedOptional, processCode, definitions);
       setMessage(`Excel descargado con ${columnCount} columnas seleccionadas y ${rows.length} proveedor(es).`);
     } catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudo generar el archivo Excel.'); }
     finally { setExporting(false); }
