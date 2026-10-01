@@ -17,6 +17,21 @@ El formulario aparece a la derecha sobre una tarjeta clara, con fotografía de e
 ### Consideraciones
 Validado visualmente en el servidor local; typecheck, build y 39 pruebas pasaron. El cambio es de interfaz y no requiere migración de base de datos.
 
+## 2026-09-30
+
+### Tarea
+Actualización local de la cabecera principal con la opción visual 2.
+
+### Archivos principales
+- `components/layout/MainLayout.tsx`
+- `src/styles/global.css`
+
+### Resultado
+La cabecera usa una paleta azul marino con acento rojo, incorpora un chip central “Panel” y agrupa la identidad del usuario con avatar y rol. Se adaptó el diseño para tablet y móvil.
+
+### Consideraciones
+Cambio solo local; no se creó commit ni se publicó en producción.
+
 ## 2026-09-29
 
 ### Tarea

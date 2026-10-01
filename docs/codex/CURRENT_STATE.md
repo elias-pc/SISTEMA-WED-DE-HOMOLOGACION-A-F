@@ -7,3 +7,4 @@
 - La pantalla Información de proveedores muestra Nro, RUC, Razón Social, Contacto, Teléfonos, E-Mail, Dirección, Departamento y filtros configurados; oculta Acción y el expediente operativo para Cliente y Supervisor de empresa.
 - La migración `006_homologation_parameters.sql` está aplicada en Neon producción; el commit `de96c6c` fue desplegado en Vercel.
 - El login usa un fondo fotográfico, tarjeta a la derecha y monograma A&F; el cambio fue validado localmente con typecheck, build, pruebas y vista del navegador.
+- La cabecera principal tiene localmente la opción visual 2 (azul marino, acento rojo, chip “Panel” e identidad de usuario agrupada); aún no se ha publicado.
