@@ -48,8 +48,7 @@ function MainLayout() {
             <button type="button" onClick={handleLogout}>Cerrar sesión</button>
           </div>
         </header>
-        {user.role === 'supervisor_general' || user.role === 'administradora' ? (
-          <section className="tenant-bar" aria-label="Contexto de trabajo">
+        <section className="tenant-bar tenant-bar-compact" aria-label="Contexto de trabajo">
             <label>Empresa
               <select value={selectedEmpresa?.id || ''} onChange={(event) => selectEmpresa(event.target.value)}>
                 {empresasDisponibles.map((empresa) => <option key={empresa.id} value={empresa.id}>{empresa.nombreComercial}</option>)}
@@ -60,8 +59,7 @@ function MainLayout() {
                 {procesosEmpresa.map((proceso) => <option key={proceso.id} value={proceso.id}>{proceso.codigo} · {proceso.estado}</option>)}
               </select>
             </label>
-          </section>
-        ) : null}
+        </section>
         <Outlet />
       </main>
     </div>

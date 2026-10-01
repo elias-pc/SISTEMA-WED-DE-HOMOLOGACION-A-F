@@ -30,7 +30,35 @@ Actualización local de la cabecera principal con la opción visual 2.
 La cabecera usa una paleta azul marino con acento rojo, incorpora un chip central “Panel” y agrupa la identidad del usuario con avatar y rol. Se adaptó el diseño para tablet y móvil.
 
 ### Consideraciones
-Cambio solo local; no se creó commit ni se publicó en producción.
+Al cierre del 2026-09-30 el cambio seguía local; después se publicó en Vercel mediante el commit `7e1d2b6` del 2026-10-01.
+
+## 2026-10-01
+
+### Tarea
+Rediseño local del resumen y gráfico de estatus del dashboard (propuesta 2).
+
+### Archivos principales
+- `app/dashboard/DashboardPage.tsx`
+- `components/dashboard/StatusSummaryTable.tsx`
+- `components/dashboard/PieChart.tsx`
+- `src/styles/global.css`
+
+### Resultado
+El gráfico se muestra a la izquierda como dona con el total al centro; el resumen va a la derecha, con cabecera roja y grupos de estatus principales, otros estatus y certificados. En pantallas pequeñas los bloques se apilan.
+
+### Consideraciones
+Validado localmente y aprobado para publicarse en la rama de producción.
+
+### Ajuste posterior
+Se amplió el gráfico, se compactó y alineó a la derecha el selector de empresa/proceso en el dashboard, y se retiraron el título, subtítulo y las cinco tarjetas de métricas redundantes.
+
+### Ajuste de tamaño
+El panel del gráfico se amplió a aproximadamente el 56% de la fila, con dona de 380 px y altura mínima compartida de 450 px para el resumen en escritorio. Se agregaron tamaños adaptables para tablet y móvil.
+
+Durante la comprobación visual se corrigió también el caso de un único estatus con proveedores: ahora el gráfico dibuja el círculo completo en lugar de quedar vacío.
+
+### Selector de empresa y proceso
+El selector compacto con tema azul marino se aplica desde `MainLayout` a todas las pestañas y roles autenticados. Las opciones siguen limitadas por las empresas/procesos accesibles para el usuario según las APIs existentes.
 
 ## 2026-09-29
 

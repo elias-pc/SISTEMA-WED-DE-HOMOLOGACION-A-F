@@ -48,12 +48,22 @@ function CompactTable({ rows, total, withPercentage = false }: { rows: StatusRow
 function StatusSummaryTable({ total, principal, observations, certificates }: Props) {
   return (
     <section className="card dashboard-summary-panel" aria-labelledby="dashboard-summary-title">
-      <h2 id="dashboard-summary-title">Resumen de estatus</h2>
-      <CompactTable rows={principal} total={total} withPercentage />
-      <div className="dashboard-summary-separator" aria-hidden="true" />
-      <CompactTable rows={observations} total={total} />
-      <div className="dashboard-summary-separator" aria-hidden="true" />
-      <CompactTable rows={certificates} total={total} />
+      <h2 id="dashboard-summary-title"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4.25h2.25V6.5H3zm4.25.35h9.5v1.55h-9.5zM3 8.9h2.25v2.25H3zm4.25.35h9.5v1.55h-9.5zM3 13.55h2.25v2.25H3zm4.25.35h9.5v1.55h-9.5z" /></svg>Resumen de estatus</h2>
+      <div className="dashboard-summary-content">
+        <div className="dashboard-summary-primary">
+          <CompactTable rows={principal} total={total} withPercentage />
+        </div>
+        <div className="dashboard-summary-support">
+          <section className="dashboard-summary-group" aria-label="Otros estatus">
+            <h3>Otros estatus</h3>
+            <CompactTable rows={observations} total={total} />
+          </section>
+          <section className="dashboard-summary-group" aria-label="Estado de certificados">
+            <h3>Estado de certificados</h3>
+            <CompactTable rows={certificates} total={total} />
+          </section>
+        </div>
+      </div>
     </section>
   );
 }
