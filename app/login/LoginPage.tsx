@@ -33,7 +33,7 @@ function LoginPage() {
     <main className="login-page">
       <section className="login-card">
         <div className="login-brand">
-          <img src="/logo.svg" alt="A&F Homologación" />
+          <img src="/logo-login.svg" alt="A&F Homologación" />
           <h1>Bienvenido</h1>
           <p>Ingresa a la plataforma de homologación de proveedores.</p>
         </div>

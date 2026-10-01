@@ -1,5 +1,22 @@
 # Cambios realizados por Codex
 
+## 2026-09-30
+
+### Tarea
+Rediseño local de inicio de sesión con fondo fotográfico y monograma A&F.
+
+### Archivos principales
+- `app/login/LoginPage.tsx`
+- `src/styles/global.css`
+- `public/logo-login.svg`
+- `public/images/login-homologacion-bg.png`
+
+### Resultado
+El formulario aparece a la derecha sobre una tarjeta clara, con fotografía de equipo y degradado rojo en el fondo. Se incorporó el monograma continuo A&F elegido y ajustes responsive para pantallas pequeñas.
+
+### Consideraciones
+Validado visualmente en el servidor local; typecheck, build y 39 pruebas pasaron. El cambio es de interfaz y no requiere migración de base de datos.
+
 ## 2026-09-29
 
 ### Tarea
@@ -49,4 +66,4 @@ Los filtros configurados se capturan al registrar proveedores, se reconocen al i
 La columna Acción y la apertura del expediente operativo se ocultan para los roles Cliente y Supervisor de empresa. Se añadieron pruebas para la normalización de parámetros, el cálculo de vencimientos y las columnas/exportación del reporte.
 
 ### Consideraciones
-La migración `006_homologation_parameters.sql` está preparada, pero no se aplicó a Neon ni a producción. El trabajo permanece local y no se publicó.
+La migración `006_homologation_parameters.sql` se aplicó a Neon producción y el commit `de96c6c` quedó desplegado en Vercel el 2026-09-30. Los ajustes visuales posteriores son locales.

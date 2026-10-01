@@ -122,22 +122,33 @@ main { padding-top: 0.75rem; }
 
 .login-page {
   min-height: 100vh;
+  min-height: 100svh;
   display: grid;
-  place-items: center;
-  padding: 2rem 1rem;
+  grid-template-columns: minmax(0, 1.12fr) minmax(380px, 0.88fr);
+  align-items: center;
+  justify-items: center;
+  padding: clamp(1.25rem, 4vw, 4rem);
+  isolation: isolate;
+  background-image:
+    linear-gradient(105deg, rgba(15, 23, 42, 0.08) 0%, rgba(15, 23, 42, 0.06) 48%, rgba(177, 19, 31, 0.66) 100%),
+    url('/images/login-homologacion-bg.png');
+  background-position: center;
+  background-size: cover;
 }
 
 .login-card {
-  width: min(100%, 460px);
+  grid-column: 2;
+  width: min(100%, 440px);
   padding: 2rem;
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 1.25rem;
   background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.2);
+  box-shadow: 0 28px 90px rgba(15, 23, 42, 0.32);
+  animation: login-card-enter 550ms cubic-bezier(.2, .75, .25, 1) both;
 }
 
 .login-brand { text-align: center; margin-bottom: 1.75rem; }
-.login-brand img { width: 200px; max-width: 100%; }
+.login-brand img { display: block; width: 164px; height: 92px; max-width: 100%; margin: 0 auto; object-fit: contain; }
 .login-brand h1 { margin: 1rem 0 0.35rem; font-size: 1.65rem; }
 .login-brand p { margin: 0; color: var(--color-text-muted); }
 .form-field { display: grid; gap: 0.45rem; margin-bottom: 1rem; font-weight: 600; }
@@ -148,11 +159,37 @@ main { padding-top: 0.75rem; }
 .password-field button { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); border: 0; background: none; color: var(--color-primary); font-size: 0.8rem; font-weight: 600; }
 .form-error { padding: 0.7rem 0.85rem; border-radius: 0.65rem; background: #fef2f2; color: #b91c1c; font-size: 0.9rem; }
 .login-submit { width: 100%; font-weight: 700; }
+.login-submit:focus-visible { outline: 3px solid rgba(213, 27, 31, 0.28); outline-offset: 3px; }
 .demo-accounts { border-top: 1px solid #e5e7eb; margin-top: 1.5rem; padding-top: 1rem; }
 .demo-accounts > p { margin: 0 0 0.65rem; color: var(--color-text-muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
 .demo-accounts button { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0; border: 0; border-bottom: 1px solid #f1f5f9; background: transparent; text-align: left; }
 .demo-accounts button:hover span { color: var(--color-primary); }
 .demo-accounts small { color: var(--color-text-muted); }
+
+@keyframes login-card-enter {
+  from { opacity: 0; transform: translate3d(18px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@media (max-width: 760px) {
+  .login-page {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 1.25rem;
+    background-image:
+      linear-gradient(115deg, rgba(15, 23, 42, 0.58), rgba(177, 19, 31, 0.7)),
+      url('/images/login-homologacion-bg.png');
+    background-position: 34% center;
+  }
+  .login-card { grid-column: 1; width: min(100%, 440px); }
+}
+
+@media (max-width: 420px) {
+  .login-card { padding: 1.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-card { animation: none; }
+}
 
 .app-shell { display: flex; min-height: 100vh; background: #e9edf3; }
 .sidebar { position: fixed; z-index: 50; inset: 0 auto 0 0; width: 260px; overflow-y: auto; padding: 2rem 1.5rem; background: #111827; color: #fff; box-shadow: 18px 0 40px rgba(15,23,42,.2); transform: translateX(-100%); transition: transform .25s ease; }

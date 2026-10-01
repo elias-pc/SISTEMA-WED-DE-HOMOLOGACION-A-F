@@ -7,6 +7,12 @@
 - Normalización: `server/homologation-config.ts`
 - Migración: `server/db/migrations/006_homologation_parameters.sql`
 
+## Autenticación
+- Inicio de sesión: `app/login/LoginPage.tsx`
+- Contexto y sesión: `src/auth/AuthContext.tsx`
+- API: `server/routes/auth.ts`
+- Marca del login: `public/logo-login.svg`; fondo: `public/images/login-homologacion-bg.png`
+
 ## Proveedores y expediente
 - Interfaz: `app/proveedores/ProveedoresPage.tsx`, `components/proveedores/ProviderWorkbench.tsx`
 - Tabla: `components/proveedores/ProveedoresTable.tsx`

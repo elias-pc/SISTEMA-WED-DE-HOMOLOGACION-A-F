@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="150" viewBox="0 0 360 150" role="img" aria-labelledby="title desc">
+  <title id="title">A&amp;F Homologación</title>
+  <desc id="desc">Monograma A&amp;F compacto con un trazo que enlaza las letras</desc>
+  <g font-family="Georgia, 'Times New Roman', serif" font-weight="700" text-anchor="middle">
+    <text x="130" y="98" fill="#d51b1f" font-size="86">A</text>
+    <text x="180" y="92" fill="#858b95" font-size="68">&amp;</text>
+    <text x="231" y="98" fill="#172033" font-size="86">F</text>
+  </g>
+  <path d="M111 105c26 9 54 9 76 0 22-9 44-9 66 0" fill="none" stroke="#d51b1f" stroke-linecap="round" stroke-width="4"/>
+  <text x="180" y="137" fill="#5d6675" font-family="Arial, sans-serif" font-size="10" font-weight="600" letter-spacing="1.8" text-anchor="middle">HOMOLOGACIÓN DE CLIENTES Y PROVEEDORES</text>
+</svg>
