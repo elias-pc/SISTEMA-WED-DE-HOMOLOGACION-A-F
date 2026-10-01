@@ -8,4 +8,4 @@
 - La migración `006_homologation_parameters.sql` está aplicada en Neon producción; el commit `de96c6c` fue desplegado en Vercel.
 - El login usa un fondo fotográfico, tarjeta a la derecha y monograma A&F; el cambio fue validado localmente con typecheck, build, pruebas y vista del navegador.
 - La cabecera principal usa la opción visual 2 (azul marino, acento rojo, chip “Panel” e identidad de usuario agrupada); publicada con el commit `7e1d2b6`.
-- El dashboard tiene localmente la propuesta visual 2 para estatus: gráfico grande a la izquierda (dona 380 px; panel ~56% de la fila), resumen agrupado alto a la derecha y selector compacto de empresa/proceso. El selector se comparte ahora en todas las pestañas y roles, limitado a las empresas y procesos devueltos al usuario por la API. No se ha publicado.
+- El dashboard tiene la propuesta visual 2 para estatus en producción: gráfico grande a la izquierda (dona 380 px; panel ~56% de la fila), resumen agrupado alto a la derecha y selector compacto de empresa/proceso compartido en todas las pestañas y roles. El commit `2edd301` está `READY` en Vercel y `/api/health` confirma almacenamiento PostgreSQL.

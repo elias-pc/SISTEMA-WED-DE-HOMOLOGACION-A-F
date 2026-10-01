@@ -60,6 +60,9 @@ Durante la comprobación visual se corrigió también el caso de un único estat
 ### Selector de empresa y proceso
 El selector compacto con tema azul marino se aplica desde `MainLayout` a todas las pestañas y roles autenticados. Las opciones siguen limitadas por las empresas/procesos accesibles para el usuario según las APIs existentes.
 
+### Publicación
+El commit `2edd301` se publicó en la rama `desplegar` y se promovió a producción en Vercel. El despliegue quedó `READY`; la URL de producción y `/api/health` respondieron `200`, con almacenamiento PostgreSQL.
+
 ## 2026-09-29
 
 ### Tarea
