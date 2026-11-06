@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { api } from '../../services/api';
 import { useTenant } from '../../src/tenant/TenantContext';
 import type { ConfiguracionHomologacion, Empresa, ProcesoHomologacion } from '../../types';
+import ExecutiveCompanyAccess from './ExecutiveCompanyAccess';
 
 const defaultConfiguration: ConfiguracionHomologacion = {
   filters: ['', ''],
@@ -42,6 +43,7 @@ function ConfiguracionPage() {
       <section className="card">
         <h2 className="page-title">Empresas y procesos</h2>
         <p className="secondary-text">Administración exclusiva del supervisor general. Cada empresa mantiene información y supervisión independientes.</p>
+        <ExecutiveCompanyAccess companies={empresas} />
         <form className="provider-form" onSubmit={handleSubmit}>
           <h3>Nueva empresa y proceso de homologación</h3>
           <label>Razón social<input value={form.razonSocial} onChange={(e) => setField('razonSocial', e.target.value)} required /></label>

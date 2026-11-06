@@ -81,7 +81,9 @@ export interface DashboardResumen {
   por_vencer:number;
   vencidos:number;
 }
-export interface ReporteOperativo { type:string; columns:string[]; rows:unknown[][] }
+export type TipoReporteOperativo = 'directorio'|'facturacion'|'homologados'|'inspecciones'|'trazabilidad';
+export interface ColumnaReporteOperativo { key:string; label:string; kind:'text'|'date'|'number'|'currency'; width:number }
+export interface ReporteOperativo { type:TipoReporteOperativo; columns:ColumnaReporteOperativo[]; rows:Array<Record<string,unknown>> }
 
 export interface DocumentoEntregable {
   id:string;

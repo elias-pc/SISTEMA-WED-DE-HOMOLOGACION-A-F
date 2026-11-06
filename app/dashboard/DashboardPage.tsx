@@ -16,7 +16,8 @@ function DashboardPage() {
     { label: 'Homologados', value: summary?.homologados ?? count('VIGENTE'), color: '#86efac' },
     { label: 'Inscritos', value: summary?.inscritos ?? proveedores.filter((item) => item.flujo?.estado === 'INSCRITO').length, color: '#fde68a' },
     { label: 'Pendientes', value: summary?.pendientes ?? proveedores.filter((item) => item.flujo?.estado === 'PENDIENTE_INSCRIPCION').length, color: '#fca5a5' },
-    { label: 'Vencidos', value: summary?.vencidos ?? count('VENCIDO'), color: '#f9a8d4' },
+    { label: 'No responden, no ubicados', value: summary?.sin_respuesta ?? (count('NO_RESPONDE') + count('NO_UBICADO') + count('NO_UBICADO_VISITA')), color: '#93c5fd' },
+    { label: 'No participan', value: summary?.no_participan ?? count('NO_PARTICIPA'), color: '#d8b4fe' },
   ];
   const total = summary?.total ?? proveedores.length;
   const principalStatus = [
@@ -25,7 +26,7 @@ function DashboardPage() {
     { number: 3, label: 'Pendientes de inscripción', value: summary?.pendientes ?? proveedores.filter((item) => item.flujo?.estado === 'PENDIENTE_INSCRIPCION').length },
     { number: 4, label: 'No responden, no ubicados', value: summary?.sin_respuesta ?? (count('NO_RESPONDE') + count('NO_UBICADO') + count('NO_UBICADO_VISITA')) },
     { number: 5, label: 'No participan', value: summary?.no_participan ?? count('NO_PARTICIPA') },
-    { number: 0, label: 'Total', value: total },
+    { number: null, label: 'Total', value: total, isTotal: true },
   ];
   const observationStatus = [
     { number: 6, label: 'Datos no corresponden', value: summary?.datos_incompletos ?? count('DATOS_INCOMPLETOS') },

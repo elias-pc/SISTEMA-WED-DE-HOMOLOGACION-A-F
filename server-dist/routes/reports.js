@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { pool } from '../db/pool.js';
 import { authenticateRequest, canAccessCompany, requireRoles } from '../middleware/auth.js';
+import { buildOperationalReport, listOperationalReportUsers, operationalReportTitles, operationalReportTypes } from '../operational-reports.js';
+import { buildOperationalWorkbook } from '../report-workbook.js';
 export const reportsRouter = Router();
 reportsRouter.use(authenticateRequest);
 async function scopedProcess(request, processId) {
@@ -79,26 +81,54 @@ reportsRouter.get('/status', async (request, response) => {
     ORDER BY p.legal_name`, [processId.data, executiveId, inspectorId]);
     response.json({ rows: result.rows });
 });
-const reportType = z.enum(['directorio', 'facturacion', 'homologados', 'inspecciones', 'trazabilidad']);
-reportsRouter.get('/operational', async (request, response) => {
+const reportType = z.enum(operationalReportTypes);
+const operationalQuery = z.object({ processId: z.string().min(1), type: reportType, userId: z.string().min(1).optional() });
+async function resolveOperationalReport(request) {
+    const parsed = operationalQuery.safeParse(request.query);
+    if (!parsed.success)
+        return { error: 'Debes indicar proceso y tipo de reporte válidos.', status: 400 };
+    const scope = await scopedProcess(request, parsed.data.processId);
+    if ('error' in scope)
+        return { error: scope.error, status: scope.error === 'Proceso no encontrado.' ? 404 : 403 };
+    const executiveId = request.user.role === 'ejecutiva' ? request.user.id : null;
+    const userId = executiveId || parsed.data.userId || null;
+    const report = await buildOperationalReport(pool, parsed.data.type, parsed.data.processId, executiveId, userId);
+    return { parsed: parsed.data, scope, executiveId, report };
+}
+reportsRouter.get('/operational/preview/users', async (request, response) => {
     const processId = z.string().min(1).safeParse(request.query.processId);
-    const type = reportType.safeParse(request.query.type);
-    if (!processId.success || !type.success)
-        return response.status(400).json({ error: 'Debes indicar proceso y tipo de reporte válidos.' });
-    const scope = await scopedProcess(request, processId.data);
+    if (!processId.success)
+        return response.status(400).json({ error: 'Debes indicar un proceso.' });
+    const authenticated = request;
+    const scope = await scopedProcess(authenticated, processId.data);
     if ('error' in scope)
         return response.status(scope.error === 'Proceso no encontrado.' ? 404 : 403).json(scope);
-    const executiveId = request.user.role === 'ejecutiva' ? request.user.id : null;
-    const queries = {
-        directorio: { columns: ['RUC', 'Razón social', 'Contacto', 'Correo', 'Teléfonos', 'Departamento', 'Distrito', 'Paso', 'Estado', 'Subestado'], sql: `SELECT p.tax_id,p.legal_name,p.contact_name,p.email,p.phones,p.department,p.district,p.current_step,p.workflow_status,p.workflow_substatus FROM providers p WHERE p.process_id=$1 AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL)) ORDER BY p.legal_name` },
-        facturacion: { columns: ['RUC', 'Proveedor', 'Banco', 'Monto', 'Modalidad', 'Fecha de pago', 'Operación', 'Factura'], sql: `SELECT p.tax_id,p.legal_name,pa.bank,pa.amount,pa.modality,pa.paid_on,pa.operation_number,pa.invoice_number FROM provider_payments pa JOIN providers p ON p.id=pa.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL)) ORDER BY pa.paid_on DESC` },
-        homologados: { columns: ['RUC', 'Proveedor', 'Tipo', 'Dictamen', 'Puntaje', 'Emisión', 'Vencimiento', 'Alcance'], sql: `SELECT p.tax_id,p.legal_name,c.document_type,c.opinion,c.score,c.issued_on,c.expires_on,c.scope FROM provider_certificates c JOIN providers p ON p.id=c.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL)) ORDER BY c.expires_on` },
-        inspecciones: { columns: ['RUC', 'Proveedor', 'Modalidad', 'Programada', 'Realizada', 'Estado', 'Motivo', 'Informe'], sql: `SELECT p.tax_id,p.legal_name,i.modality,i.scheduled_at,i.completed_at,i.status,i.reason,i.report_reference FROM provider_inspections i JOIN providers p ON p.id=i.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL)) ORDER BY i.scheduled_at DESC NULLS LAST` },
-        trazabilidad: { columns: ['RUC', 'Proveedor', 'Transición', 'Desde', 'Hacia', 'Rol', 'Motivo', 'Fecha'], sql: `SELECT p.tax_id,p.legal_name,h.transition_code,concat(h.from_step,' · ',h.from_substatus),concat(h.to_step,' · ',h.to_substatus),h.actor_role,h.reason,h.created_at FROM provider_status_history h JOIN providers p ON p.id=h.provider_id WHERE p.process_id=$1 AND ($2::text IS NULL OR EXISTS (SELECT 1 FROM provider_assignments a WHERE a.provider_id=p.id AND a.assignment_role='ejecutiva' AND a.assigned_user_id=$2 AND a.released_at IS NULL)) ORDER BY h.created_at DESC` },
-    };
-    const report = queries[type.data];
-    const rows = await pool.query(report.sql, [processId.data, executiveId]);
-    response.json({ type: type.data, columns: report.columns, rows: rows.rows.map((row) => Object.values(row)) });
+    const executiveId = authenticated.user.role === 'ejecutiva' ? authenticated.user.id : null;
+    response.json({ users: await listOperationalReportUsers(pool, processId.data, executiveId) });
+});
+reportsRouter.get('/operational/preview', async (request, response) => {
+    const resolved = await resolveOperationalReport(request);
+    if ('error' in resolved)
+        return response.status(resolved.status ?? 500).json({ error: resolved.error });
+    response.json(resolved.report);
+});
+reportsRouter.get('/operational/export', async (request, response) => {
+    const resolved = await resolveOperationalReport(request);
+    if ('error' in resolved)
+        return response.status(resolved.status ?? 500).json({ error: resolved.error });
+    const requestedColumns = typeof request.query.columns === 'string' ? request.query.columns.split(',').filter(Boolean) : resolved.report.columns.map((column) => column.key);
+    const allowedColumns = new Set(resolved.report.columns.map((column) => column.key));
+    const selectedColumns = requestedColumns.filter((key) => allowedColumns.has(key));
+    if (!selectedColumns.length)
+        return response.status(400).json({ error: 'Selecciona al menos una columna.' });
+    const search = typeof request.query.search === 'string' ? request.query.search.trim().toLocaleLowerCase('es-PE') : '';
+    const rows = search ? resolved.report.rows.filter((row) => selectedColumns.some((key) => String(row[key] ?? '').toLocaleLowerCase('es-PE').includes(search))) : resolved.report.rows;
+    const context = await pool.query(`SELECT c.trade_name,h.code FROM homologation_processes h JOIN companies c ON c.id=h.company_id WHERE h.id=$1`, [resolved.parsed.processId]);
+    const title = operationalReportTitles[resolved.report.type];
+    const bytes = await buildOperationalWorkbook({ ...resolved.report, rows }, selectedColumns, { title, company: String(context.rows[0]?.trade_name || ''), process: String(context.rows[0]?.code || '') });
+    response.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    response.setHeader('Content-Disposition', `attachment; filename="${resolved.report.type}-${resolved.parsed.processId}.xlsx"`);
+    response.send(bytes);
 });
 const productivityQuery = z.object({ processId: z.string().min(1), from: z.string().date(), to: z.string().date() }).refine((value) => value.to >= value.from, { path: ['to'], message: 'La fecha final debe ser posterior a la inicial.' });
 reportsRouter.get('/productivity', requireRoles('supervisor_general', 'administradora'), async (request, response) => {

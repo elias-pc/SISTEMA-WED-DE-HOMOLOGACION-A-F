@@ -1,4 +1,4 @@
-import type { AuthUser, DashboardResumen, Empresa, EstadoSeguimiento, ExpedienteProveedor, HistorialFlujo, ImportPreview, ProcesoHomologacion, Proveedor, ReporteEstadoProveedores, ReporteOperativo, ReporteProductividad, ResumenCartera, ResumenMiCartera, ResultadoAsignacion, TransicionDisponible } from '../types';
+import type { AuthUser, DashboardResumen, Empresa, EstadoSeguimiento, ExpedienteProveedor, HistorialFlujo, ImportPreview, ProcesoHomologacion, Proveedor, ReporteEstadoProveedores, ReporteOperativo, ReporteProductividad, ResumenCartera, ResumenMiCartera, ResultadoAsignacion, TipoReporteOperativo, TransicionDisponible } from '../types';
 
 export class ApiError extends Error { constructor(message:string,public status:number){super(message)} }
 async function request<T>(path:string,options:RequestInit={}):Promise<T>{
@@ -28,9 +28,12 @@ export const api={
   previewProviderImport:(payload:{empresaId:string;procesoId:string;fileName:string;contentBase64:string})=>request<ImportPreview>('/providers/import/preview',{method:'POST',body:JSON.stringify(payload)}),
   importProviders:(payload:{empresaId:string;procesoId:string;fileName:string;contentBase64:string})=>request<ImportPreview>('/providers/import',{method:'POST',body:JSON.stringify(payload)}),
   users:(empresaId:string)=>request<{users:AuthUser[]}>(`/users?empresaId=${encodeURIComponent(empresaId)}`),
+  executives:()=>request<{users:AuthUser[]}>('/users/executives'),
+  updateExecutiveCompanies:(userId:string,empresaIds:string[])=>request<{user:AuthUser}>(`/users/${encodeURIComponent(userId)}/companies`,{method:'PATCH',body:JSON.stringify({empresaIds})}),
   dashboardReport:(processId:string)=>request<DashboardResumen>(`/reports/dashboard?processId=${encodeURIComponent(processId)}`),
   providerStatusReport:(processId:string)=>request<ReporteEstadoProveedores>(`/reports/status?processId=${encodeURIComponent(processId)}`),
-  operationalReport:(processId:string,type:'directorio'|'facturacion'|'homologados'|'inspecciones'|'trazabilidad')=>request<ReporteOperativo>(`/reports/operational?processId=${encodeURIComponent(processId)}&type=${encodeURIComponent(type)}`),
+  operationalReport:(processId:string,type:TipoReporteOperativo,userId?:string)=>request<ReporteOperativo>(`/reports/operational/preview?processId=${encodeURIComponent(processId)}&type=${encodeURIComponent(type)}${userId?`&userId=${encodeURIComponent(userId)}`:''}`),
+  operationalReportUsers:(processId:string)=>request<{users:Array<{id:string;name:string}>}>(`/reports/operational/preview/users?processId=${encodeURIComponent(processId)}`),
   productivityReport:(processId:string,from:string,to:string)=>request<ReporteProductividad>(`/reports/productivity?processId=${encodeURIComponent(processId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   portfolio:(processId:string)=>request<ResumenCartera>(`/assignments/portfolio?processId=${encodeURIComponent(processId)}`),
   myPortfolio:(processId:string)=>request<ResumenMiCartera>(`/providers/my-portfolio?processId=${encodeURIComponent(processId)}`),

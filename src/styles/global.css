@@ -216,14 +216,14 @@ main { padding-top: 0.75rem; }
 .dashboard-page { display: grid; gap: 1.25rem; }
 .dashboard-overview-row { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); align-items: stretch; gap: 1.25rem; }
 .dashboard-status-panel { width: 100%; min-width: 0; }
-.dashboard-summary-panel { min-width: 0; min-height: 450px; padding: 0 1rem 1rem; overflow: hidden; }
-.dashboard-summary-panel h2 { display: flex; align-items: center; gap: .65rem; margin: 0 -1rem .85rem; padding: .78rem 1rem; border-radius: .9rem .9rem 0 0; background: linear-gradient(105deg, #a91620, #cf1e29 58%, #a91620); color: #fff; font-size: 1rem; font-weight: 800; text-align: left; text-transform: uppercase; }
+.dashboard-summary-panel { min-width: 0; padding: 0 1rem 1rem; overflow: hidden; }
+.dashboard-summary-panel h2 { display: flex; align-items: center; gap: .65rem; margin: 0 -1rem .85rem; padding: .82rem 1rem; border-radius: .9rem .9rem 0 0; background: linear-gradient(105deg, #172d48, #21476d); color: #fff; font-size: 1rem; font-weight: 800; text-align: left; text-transform: uppercase; }
 .dashboard-summary-panel h2 svg { width: 1.15rem; height: 1.15rem; flex: 0 0 1.15rem; fill: currentColor; }
-.dashboard-summary-content { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); align-items: start; gap: .65rem; flex: 1; }
+.dashboard-summary-content { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: .65rem; }
 .dashboard-summary-primary, .dashboard-summary-support { min-width: 0; }
-.dashboard-summary-support { display: grid; gap: .55rem; }
+.dashboard-summary-support { display: grid; gap: .65rem; }
 .dashboard-summary-group { min-width: 0; padding: .4rem; border: 1px solid #d5dce7; border-radius: .6rem; background: #fff; }
-.dashboard-summary-group h3 { margin: 0 0 .3rem; padding: .25rem .4rem; border-radius: .35rem; background: #e7edf5; color: #293b52; font-size: .7rem; font-weight: 800; }
+.dashboard-summary-group h3 { margin: 0 0 .3rem; padding: .35rem .45rem; border-radius: .35rem; background: #172d48; color: #fff; font-size: .7rem; font-weight: 800; text-transform: uppercase; }
 .dashboard-summary-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .76rem; }
 .dashboard-summary-table th, .dashboard-summary-table td { padding: .28rem .35rem; border: 1px solid #cbd5e1; line-height: 1.2; }
 .dashboard-summary-table th { background: #e8edf4; color: #172b45; font-weight: 700; text-align: center; }
@@ -231,6 +231,7 @@ main { padding-top: 0.75rem; }
 .dashboard-summary-table th:nth-child(2), .dashboard-summary-table td:nth-child(2) { text-align: left; }
 .dashboard-summary-table th:nth-child(n+3), .dashboard-summary-table td:nth-child(n+3) { width: 3rem; text-align: center; }
 .dashboard-summary-table tbody tr:last-child td { font-weight: 800; }
+.dashboard-summary-table .dashboard-summary-total-row td { border-color: #172d48; background: #172d48; color: #fff; }
 .dashboard-summary-support .dashboard-summary-table { font-size: .71rem; }
 .dashboard-summary-support .dashboard-summary-table th:first-child, .dashboard-summary-support .dashboard-summary-table td:first-child { width: 2rem; }
 .dashboard-summary-support .dashboard-summary-table th:nth-child(n+3), .dashboard-summary-support .dashboard-summary-table td:nth-child(n+3) { width: 2.75rem; }
@@ -243,7 +244,7 @@ main { padding-top: 0.75rem; }
 .pie-chart-swatch { width: .9rem; height: .9rem; flex: 0 0 .9rem; border-radius: .25rem; }
 .pie-chart-card-large { padding: 1.35rem; }
 .dashboard-status-panel .pie-chart-card-large { display: flex; min-height: 450px; flex-direction: column; padding: 0 1.25rem 1.25rem; overflow: hidden; border-top: 0; border-left: 0; }
-.dashboard-status-panel .pie-chart-card-large h3 { margin: 0 -1.25rem; padding: .82rem 1.15rem; border-radius: .9rem .9rem 0 0; background: linear-gradient(105deg, #172d48, #21476d); color: #fff; font-size: 1rem; }
+.dashboard-status-panel .pie-chart-card-large h3 { margin: 0 -1.25rem; padding: .82rem 1.15rem; border-radius: .9rem .9rem 0 0; background: linear-gradient(105deg, #172d48, #21476d); color: #fff; font-size: 1rem; text-transform: uppercase; }
 .pie-chart-card-large .pie-chart-layout { flex: 1; justify-content: center; gap: 2rem; }
 .dashboard-status-panel .pie-chart-card-large .pie-chart-layout { min-height: 370px; margin-top: .5rem; }
 .pie-chart-card-large .pie-chart-svg { width: 380px; height: 380px; }
@@ -318,6 +319,19 @@ main { padding-top: 0.75rem; }
 .report-card h3 { margin: 0; font-size: 1rem; }
 .report-card p { color: var(--color-text-muted); }
 .report-card button { align-self: flex-start; }
+.report-card.is-selected { border-color: #21476d; background: #f4f8fc; box-shadow: 0 12px 26px rgba(23,45,72,.18); }
+.report-preview { display: grid; gap: 1rem; margin-top: 1.5rem; padding: 1.25rem; border: 1px solid #cfd9e5; border-radius: .9rem; background: #f8fafc; }
+.report-preview h3 { margin: 0; color: #172d48; }
+.report-preview .secondary-text { margin: .25rem 0 0; }
+.report-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; align-items: end; }
+.report-controls label { display: grid; gap: .3rem; color: var(--color-text-muted); font-size: .75rem; font-weight: 800; text-transform: uppercase; }
+.report-controls select, .report-controls input { min-width: 0; padding: .65rem .7rem; border: 1px solid #cbd5e1; border-radius: .55rem; background: #fff; color: var(--color-text); font: inherit; text-transform: none; }
+.report-table-scroll { overflow: auto; border: 1px solid #cbd5e1; border-radius: .65rem; background: #fff; }
+.report-table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: .8rem; }
+.report-table th, .report-table td { padding: .55rem .65rem; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
+.report-table th { position: sticky; z-index: 2; top: 0; background: #172d48; color: #fff; font-size: .75rem; text-align: center; white-space: nowrap; }
+.report-table tbody tr:nth-child(even) td { background: #f7faff; }
+.report-table td.report-negative { color: #d51b1f; font-weight: 800; }
 .context-label { margin: 0.35rem 0; color: var(--color-primary); font-size: 0.85rem; font-weight: 700; }
 .tenant-bar { display: flex; gap: 1rem; margin-bottom: 0.5rem; padding: 0.8rem 1rem; border: 1px solid #cfd6e2; border-radius: 0.8rem; background: #fff; box-shadow: 0 8px 20px rgba(15,23,42,.1); }
 .tenant-bar label { display: grid; flex: 1; gap: 0.25rem; color: var(--color-text-muted); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
@@ -326,6 +340,18 @@ main { padding-top: 0.75rem; }
 .tenant-bar-compact label { flex: 0 1 150px; gap: .08rem; color: rgba(226,232,240,.78); font-size: .61rem; letter-spacing: .04em; }
 .tenant-bar-compact select { width: 150px; max-width: 100%; height: 2rem; padding: .3rem .55rem; border-color: rgba(255,255,255,.55); border-radius: .45rem; font-size: .76rem; font-weight: 600; }
 .company-grid { display: grid; gap: 1rem; margin-top: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.executive-company-access { margin-top: 1.25rem; padding: 1.25rem; background: #fff; }
+.executive-company-access h3 { margin: 0 0 0.4rem; }
+.executive-company-access > .secondary-text { margin: 0 0 1rem; }
+.executive-company-list { display: grid; gap: 0.8rem; }
+.executive-company-row { display: grid; grid-template-columns: minmax(170px, 0.8fr) minmax(260px, 2fr) minmax(180px, 0.8fr); align-items: center; gap: 1rem; padding: 1rem; border: 1px solid var(--color-border); border-radius: 0.8rem; background: #f8fafc; }
+.executive-company-identity { display: grid; gap: 0.25rem; min-width: 0; }
+.executive-company-identity span { overflow-wrap: anywhere; color: var(--color-text-muted); font-size: 0.82rem; }
+.executive-company-options { display: flex; flex-wrap: wrap; gap: 0.55rem 1rem; margin: 0; padding: 0.6rem 0.8rem 0.75rem; border: 1px solid var(--color-border); border-radius: 0.65rem; }
+.executive-company-options legend { padding: 0 0.3rem; font-size: 0.78rem; font-weight: 700; }
+.executive-company-options label { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.86rem; }
+.executive-company-save { display: grid; justify-items: start; gap: 0.5rem; }
+.executive-company-save .success-message, .executive-company-save .form-error { margin: 0; padding: 0.45rem 0.6rem; font-size: 0.78rem; }
 .process-steps { display: grid; gap: 0.8rem; margin-top: 1.5rem; }
 .process-step { display: flex; align-items: center; gap: 1rem; }
 .process-step > span { width: 2rem; height: 2rem; display: grid; flex: 0 0 2rem; place-items: center; border-radius: 50%; background: #d1d5db; color: #fff; font-weight: 700; }
@@ -515,6 +541,8 @@ main { padding-top: 0.75rem; }
   .user-copy strong { max-width: 120px; }
   .user-menu button { padding: .5rem .6rem; font-size: .82rem; }
   .provider-form { grid-template-columns: 1fr; }
+  .report-controls { grid-template-columns: 1fr 1fr; }
+  .executive-company-row { grid-template-columns: 1fr; align-items: stretch; }
   .portfolio-controls { grid-template-columns: 1fr; }
   .my-portfolio-summary { grid-template-columns: 1fr; }
   .my-portfolio-hero { align-items: flex-start; flex-direction: column; }
@@ -647,7 +675,6 @@ main { padding-top: 0.75rem; }
   .dashboard-status-panel { justify-self: stretch; }
   .dashboard-status-panel .pie-chart-card-large { min-height: 420px; }
   .dashboard-status-panel .pie-chart-card-large .pie-chart-layout { min-height: 340px; }
-  .dashboard-summary-support { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .workbench-grid { grid-template-columns: 1fr; }
   .status-table-heading { flex-wrap: wrap; }
   .status-table-actions { flex-wrap: wrap; }
@@ -670,6 +697,7 @@ main { padding-top: 0.75rem; }
 
 @media (max-width: 540px) {
   .tenant-bar-compact { flex-direction: column; }
+  .report-controls { grid-template-columns: 1fr; }
   .dashboard-status-panel .pie-chart-card-large { min-height: 0; }
   .dashboard-status-panel .pie-chart-card-large .pie-chart-layout { min-height: 0; }
   .dashboard-summary-content, .dashboard-summary-support { grid-template-columns: 1fr; }

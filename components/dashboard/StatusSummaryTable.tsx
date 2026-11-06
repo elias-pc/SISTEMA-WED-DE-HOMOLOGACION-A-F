@@ -1,7 +1,8 @@
 interface StatusRow {
-  number: number;
+  number: number | null;
   label: string;
   value: number;
+  isTotal?: boolean;
 }
 
 interface Props {
@@ -26,15 +27,15 @@ function CompactTable({ rows, total, withPercentage = false }: { rows: StatusRow
       <thead>
         <tr>
           <th scope="col">Nro</th>
-          <th scope="col">Estatus</th>
+          <th scope="col">Status</th>
           <th scope="col">Nro</th>
           {withPercentage ? <th scope="col">%</th> : null}
         </tr>
       </thead>
       <tbody>
         {rows.map((row) => (
-          <tr key={row.number}>
-            <td>{row.number}</td>
+          <tr key={`${row.number ?? 'total'}-${row.label}`} className={row.isTotal ? 'dashboard-summary-total-row' : undefined}>
+            <td>{row.number ?? ''}</td>
             <td>{row.label}</td>
             <td>{countValue(row.value)}</td>
             {withPercentage ? <td>{percentage(row.value, total)}</td> : null}
@@ -48,14 +49,14 @@ function CompactTable({ rows, total, withPercentage = false }: { rows: StatusRow
 function StatusSummaryTable({ total, principal, observations, certificates }: Props) {
   return (
     <section className="card dashboard-summary-panel" aria-labelledby="dashboard-summary-title">
-      <h2 id="dashboard-summary-title"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4.25h2.25V6.5H3zm4.25.35h9.5v1.55h-9.5zM3 8.9h2.25v2.25H3zm4.25.35h9.5v1.55h-9.5zM3 13.55h2.25v2.25H3zm4.25.35h9.5v1.55h-9.5z" /></svg>Resumen de estatus</h2>
+      <h2 id="dashboard-summary-title"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4.25h2.25V6.5H3zm4.25.35h9.5v1.55h-9.5zM3 8.9h2.25v2.25H3zm4.25.35h9.5v1.55h-9.5zM3 13.55h2.25v2.25H3zm4.25.35h9.5v1.55h-9.5z" /></svg>Resumen de status</h2>
       <div className="dashboard-summary-content">
         <div className="dashboard-summary-primary">
           <CompactTable rows={principal} total={total} withPercentage />
         </div>
         <div className="dashboard-summary-support">
-          <section className="dashboard-summary-group" aria-label="Otros estatus">
-            <h3>Otros estatus</h3>
+          <section className="dashboard-summary-group" aria-label="Otros status">
+            <h3>Otros status</h3>
             <CompactTable rows={observations} total={total} />
           </section>
           <section className="dashboard-summary-group" aria-label="Estado de certificados">

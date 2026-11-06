@@ -1,5 +1,43 @@
 # Cambios realizados por Codex
 
+## 2026-11-06
+
+### Tarea
+Completar los reportes operativos con columnas acordadas, identidad institucional y filtros.
+
+### Archivos principales
+- `server/operational-reports.ts`
+- `server/report-workbook.ts`
+- `server/routes/reports.ts`
+- `app/reportes/ReportesPage.tsx`
+- `server/dev-memory.ts`
+- `src/styles/global.css`
+- `docs/codex/ARCHITECTURE_INDEX.md`
+
+### Resultado
+Los cinco reportes (directorio, facturación, homologados, inspecciones y trazabilidad) usan las etiquetas solicitadas. La exportación Excel incluye el logo A&F y la paleta institucional, siempre con todas las columnas del reporte, y muestra en rojo los días por vencer negativos. La vista previa permite buscar y filtrar por cliente y usuario, y la búsqueda se aplica también al Excel exportado; el botón de descarga está dentro de esa vista previa. El modo demo en memoria incorpora los endpoints `preview`, `preview/users` y `export` para que los reportes funcionen sin PostgreSQL.
+
+### Consideraciones
+Se corrigieron los errores de TypeScript del buffer del logo y del estado HTTP del reporte. Validado con typecheck, build, 40 pruebas, descarga real de Excel y revisión de la pantalla en el navegador. Sin commit, push ni despliegue.
+
+## 2026-10-21
+
+### Tarea
+Administrar la asociación de ejecutivas con empresas para habilitar asignaciones multempresa.
+
+### Archivos principales
+- `app/configuracion/ExecutiveCompanyAccess.tsx`
+- `server/routes/users.ts`
+- `server/dev-memory.ts`
+- `services/api.ts`
+- `server/users.e2e.test.ts`
+
+### Resultado
+Se añadió una interfaz para que administradora/supervisora general vincule ejecutivas activas con una o más empresas. La API persiste el conjunto de vínculos y bloquea retirar empresas con proveedores activos asignados. El modo de memoria local implementa el mismo comportamiento.
+
+### Consideraciones
+Se reutiliza la tabla existente `user_companies`; no requiere migración. Los vínculos existentes se conservan. Cambios locales únicamente; sin commit, push ni despliegue.
+
 ## 2026-09-30
 
 ### Tarea
@@ -113,3 +151,19 @@ La columna Acción y la apertura del expediente operativo se ocultan para los ro
 
 ### Consideraciones
 La migración `006_homologation_parameters.sql` se aplicó a Neon producción y el commit `de96c6c` quedó desplegado en Vercel el 2026-09-30. Los ajustes visuales posteriores son locales.
+
+## 2026-11-05
+
+### Tarea
+Correcciones visuales y de consistencia del dashboard según observaciones.
+
+### Archivos principales
+- `app/dashboard/DashboardPage.tsx`
+- `components/dashboard/StatusSummaryTable.tsx`
+- `src/styles/global.css`
+
+### Resultado
+La dona ahora muestra los mismos cinco status del resumen principal. Los tres cuadros se presentan verticalmente, los encabezados se muestran en mayúsculas con la misma paleta azul institucional y la fila Total ya no numera como `0`.
+
+### Consideraciones
+Validado con typecheck, build y comprobación visual en el entorno local. El cambio es solo de interfaz y permanece sin commit ni despliegue.
