@@ -100,6 +100,19 @@ main > header .secondary-text {
   border-radius: 0.75rem;
 }
 
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #172d48;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
 .app-header {
   position: sticky;
   top: 0;
@@ -422,10 +435,10 @@ main { padding-top: 0.75rem; }
 .status-table-scroll { max-height: 560px; overflow-x: hidden; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: .65rem; background: #fff; }
 .status-detail-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: clamp(.56rem, .72vw, .72rem); }
 .status-detail-table th,.status-detail-table td { min-width: 0; padding: .42rem .16rem; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; background: #fff; text-align: left; vertical-align: middle; overflow-wrap: anywhere; word-break: normal; white-space: normal; }
-.status-detail-table th { position: sticky; z-index: 3; top: 0; min-height: 48px; background: #e5e7eb; color: #111827; font-size: .92em; font-weight: 800; line-height: 1.15; text-align: center; }
+.status-detail-table th { position: sticky; z-index: 3; top: 0; min-height: 48px; background: #172d48; color: #fff; font-size: .92em; font-weight: 800; line-height: 1.15; text-align: center; border-bottom: 2px solid #d51b1f; }
 .status-detail-table tbody tr:nth-child(even) td { background: #f8fafc; }
 .status-detail-table .sticky-column { position: sticky; z-index: 2; box-shadow: 1px 0 #cbd5e1; }
-.status-detail-table th.sticky-column { z-index: 5; background: #d7dbe1; }
+.status-detail-table th.sticky-column { z-index: 5; background: #172d48; color: #fff; }
 .status-detail-table .sticky-numero { left: 0; text-align: center; }
 .status-detail-table .sticky-ruc { left: 5%; }
 .status-detail-table .sticky-razonSocial { left: 13%; }

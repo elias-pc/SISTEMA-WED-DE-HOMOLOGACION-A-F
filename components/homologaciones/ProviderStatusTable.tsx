@@ -23,7 +23,7 @@ function ProviderStatusTable({ processId, processCode, filterLabels }: Props) {
   const loadRows = useCallback(async () => {
     setLoading(true); setMessage('');
     try { setRows((await api.providerStatusReport(processId)).rows); }
-    catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudo cargar el estatus de proveedores.'); }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudo cargar el status de proveedores.'); }
     finally { setLoading(false); }
   }, [processId]);
 

@@ -20,6 +20,27 @@ Los cinco reportes (directorio, facturación, homologados, inspecciones y trazab
 ### Consideraciones
 Se corrigieron los errores de TypeScript del buffer del logo y del estado HTTP del reporte. Validado con typecheck, build, 40 pruebas, descarga real de Excel y revisión de la pantalla en el navegador. Sin commit, push ni despliegue.
 
+## 2026-11-06
+
+### Tarea
+Aplicar observaciones del cliente sobre status, cartera y parámetros por empresa.
+
+### Archivos principales
+- `components/layout/MainLayout.tsx`
+- `app/homologaciones/HomologacionesPage.tsx`
+- `components/homologaciones/ProviderStatusTable.tsx`
+- `app/carteras/CarterasPage.tsx`
+- `app/mi-cartera/MiCarteraPage.tsx`
+- `app/configuracion/ConfiguracionPage.tsx`
+- `services/statusTable.ts`
+- `src/styles/global.css`
+
+### Resultado
+La terminología visible usa “Status” en lugar de “Estatus”. La tabla de status toma la identidad institucional (azul marino, acento rojo y texto blanco) y ya no muestra Filtro 2. Cartera de ejecutivas eliminó la columna Paso, y Mi Cartera reemplazó Avance/Situación por Status/Sub Status sin referencias al paso.
+
+### Consideraciones
+Los datos históricos de `filtro2` se conservan; solo se dejó de solicitar y mostrar. Validado con typecheck, build, 40 pruebas y revisión en navegador. Sin commit, push ni despliegue.
+
 ## 2026-10-21
 
 ### Tarea

@@ -12,14 +12,13 @@ export interface StatusColumn {
 }
 
 export function buildStatusColumns(filterLabels: readonly string[] = []): readonly StatusColumn[] {
-  const [filter1 = 'Filtro 1', filter2 = 'Filtro 2'] = filterLabels;
+  const [filter1 = 'Filtro'] = filterLabels;
   return [
   { key: 'numero', label: 'Nro', fixed: true, kind: 'number', width: 6 },
   { key: 'ruc', label: 'RUC', fixed: true, kind: 'text', width: 14 },
   { key: 'razonSocial', label: 'Razón Social', fixed: true, kind: 'text', width: 27 },
   { key: 'tipoDocumento', label: 'Tipo de Documento', fixed: false, kind: 'text', width: 18 },
   { key: 'filtro1', label: filter1, fixed: false, kind: 'text', width: 15 },
-  { key: 'filtro2', label: filter2, fixed: false, kind: 'text', width: 15 },
   { key: 'estado', label: 'Status', fixed: false, kind: 'text', width: 15 },
   { key: 'subestado', label: 'Sub-Status', fixed: false, kind: 'text', width: 20 },
   { key: 'dictamen', label: 'Dictamen', fixed: false, kind: 'text', width: 16 },
@@ -91,7 +90,7 @@ export async function buildStatusWorkbookBytes(rows: readonly EstadoProveedorRep
     }
   });
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Estatus de proveedores');
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Status de proveedores');
   const bytes = XLSX.write(workbook, { type: 'array', bookType: 'xlsx', compression: true, cellDates: true });
   return { bytes, columnCount: columns.length };
 }
@@ -101,7 +100,7 @@ export async function downloadStatusWorkbook(rows: readonly EstadoProveedorRepor
   const url = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `estatus-proveedores-${processCode.toLocaleLowerCase('es-PE').replace(/[^a-z0-9]+/g, '-')}.xlsx`;
+  link.download = `status-proveedores-${processCode.toLocaleLowerCase('es-PE').replace(/[^a-z0-9]+/g, '-')}.xlsx`;
   link.click();
   URL.revokeObjectURL(url);
   return columnCount;

@@ -1,9 +1,9 @@
 # Estado actual
 
 - Configuración de parámetros por empresa implementada localmente.
-- Los nuevos proveedores e importaciones guardan los dos filtros configurables.
+- Los nuevos proveedores e importaciones guardan el filtro configurable de la empresa.
 - El expediente usa documentos, dictámenes y módulos configurados; la fecha de vencimiento se calcula desde la vigencia del documento.
-- La tabla de estatus permite visualizar/exportar Filtro 1, Filtro 2 y Módulos.
+- La tabla de status permite visualizar/exportar el filtro configurable y los Módulos; su encabezado usa azul marino, acento rojo y texto blanco.
 - La pantalla Información de proveedores muestra Nro, RUC, Razón Social, Contacto, Teléfonos, E-Mail, Dirección, Departamento y filtros configurados; oculta Acción y el expediente operativo para Cliente y Supervisor de empresa.
 - La migración `006_homologation_parameters.sql` está aplicada en Neon producción; el commit `de96c6c` fue desplegado en Vercel.
 - El login usa un fondo fotográfico, tarjeta a la derecha y monograma A&F; el cambio fue validado localmente con typecheck, build, pruebas y vista del navegador.
@@ -12,3 +12,4 @@
 - Local: se agregó administración de las empresas asociadas a cada ejecutiva desde “Empresas y procesos”. La asociación es explícita y sigue controlando qué ejecutivas aparecen en Carteras; se bloquea retirar una empresa si hay proveedores activos asignados. No se ha hecho commit, push ni despliegue.
 - Local: el dashboard ahora alinea la dona con los cinco status del resumen, apila los tres cuadros de resumen y unifica sus encabezados y la fila Total con la identidad azul institucional. No se ha hecho commit, push ni despliegue.
 - Local: los cinco reportes operativos usan las columnas solicitadas, incluyen logo y colores institucionales en el Excel, permiten buscar y filtrar por cliente/usuario, y exportar siempre con todas las columnas del reporte; resaltan en rojo los días por vencer negativos. El modo demo en memoria ya expone `preview`, `preview/users` y `export`, y la búsqueda también se aplica al Excel exportado. Validado con typecheck, build y 40 pruebas.
+- Local: se aplicaron observaciones del cliente sobre terminología (“Status” en lugar de “Estatus”), se eliminó el Filtro 2 y la columna Paso de Cartera, y Mi Cartera usa las columnas Status/Sub Status. Pendiente de commit y despliegue.
