@@ -106,3 +106,18 @@ export async function downloadStatusWorkbook(rows: readonly EstadoProveedorRepor
   URL.revokeObjectURL(url);
   return columnCount;
 }
+
+const nonSearchableStatusKeys = new Set<string>(['numero', 'diasPorVencer', 'entregables', 'modulos']);
+
+/** Filtra filas buscando el texto en RUC, Razón Social, Tipo de Documento, filtros, Status, Sub-Status, Dictamen, Puntaje y fechas. */
+export function filterStatusRows(rows: readonly EstadoProveedorReporte[], search: string, definitions: readonly StatusColumn[] = statusColumns) {
+  const normalize = (value: string) => value.toLocaleLowerCase('es-PE').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/_/g, ' ');
+  const term = normalize(search.trim());
+  if (!term) return [...rows];
+  const searchable = definitions.filter((column) => !nonSearchableStatusKeys.has(column.key));
+  return rows.filter((row, index) => searchable.some((column) => {
+    const raw = rawStatusValue(row, column, index);
+    if (raw === null || raw === undefined || raw === '') return false;
+    return normalize(String(raw)).includes(term) || normalize(formatStatusValue(raw, column)).includes(term);
+  }));
+}

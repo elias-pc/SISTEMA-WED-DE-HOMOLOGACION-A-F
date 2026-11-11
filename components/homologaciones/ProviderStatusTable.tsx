@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../services/api';
-import { buildStatusColumns, downloadStatusWorkbook, formatStatusValue, optionalStatusColumnKeys, rawStatusValue, visibleStatusColumns, type StatusColumnKey } from '../../services/statusTable';
+import { buildStatusColumns, downloadStatusWorkbook, filterStatusRows, formatStatusValue, optionalStatusColumnKeys, rawStatusValue, visibleStatusColumns, type StatusColumnKey } from '../../services/statusTable';
 import type { EstadoProveedorReporte } from '../../types';
 import DeliverablesModal from './DeliverablesModal';
 
@@ -11,7 +11,8 @@ interface Props {
 }
 
 function ProviderStatusTable({ processId, processCode, filterLabels }: Props) {
-  const [rows, setRows] = useState<EstadoProveedorReporte[]>([]);
+  const [allRows, setRows] = useState<EstadoProveedorReporte[]>([]);
+  const [search, setSearch] = useState('');
   const [selectedOptional, setSelectedOptional] = useState<StatusColumnKey[]>([...optionalStatusColumnKeys]);
   const [selectedProvider, setSelectedProvider] = useState<EstadoProveedorReporte | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -46,6 +47,7 @@ function ProviderStatusTable({ processId, processCode, filterLabels }: Props) {
   const definitions = useMemo(() => buildStatusColumns(filterLabels), [filterLabels]);
   const optionalColumns = useMemo(() => definitions.filter((column) => !column.fixed), [definitions]);
   const columns = useMemo(() => visibleStatusColumns(selectedOptional, definitions), [selectedOptional, definitions]);
+  const rows = useMemo(() => filterStatusRows(allRows, search, definitions), [allRows, search, definitions]);
 
   const toggleColumn = (key: StatusColumnKey) => {
     setSelectedOptional((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
@@ -85,9 +87,10 @@ function ProviderStatusTable({ processId, processCode, filterLabels }: Props) {
           <button type="button" className="btn-primary" onClick={() => void exportWorkbook()} disabled={loading || exporting || !rows.length}>{exporting ? 'Generando Excel...' : 'Descargar Excel'}</button>
         </div>
       </div>
+      {allRows.length ? <div className="status-search"><input className="search-input" type="search" placeholder="Buscar por RUC, razón social, tipo de documento, filtro, status, sub-status, dictamen, puntaje o fecha..." aria-label="Buscar proveedores" value={search} onChange={(event) => setSearch(event.target.value)} />{search.trim() ? <p className="secondary-text" role="status">{rows.length ? `Mostrando ${rows.length} de ${allRows.length} proveedor(es).` : 'No se encontraron proveedores con esa búsqueda.'}</p> : null}</div> : null}
 
       {message ? <p className={message.startsWith('Excel') ? 'success-message' : 'form-error'} role="status">{message}</p> : null}
-      {loading ? <p className="empty-status">Cargando información del proceso...</p> : rows.length ? (
+      {loading ? <p className="empty-status">Cargando información del proceso...</p> : allRows.length ? (
         <div className="status-table-scroll">
           <table className="status-detail-table">
             <colgroup>{columns.map((column) => <col key={column.key} className={`status-column-${column.key}`} />)}</colgroup>

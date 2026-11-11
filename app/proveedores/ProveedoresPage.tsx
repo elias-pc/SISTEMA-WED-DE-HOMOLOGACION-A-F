@@ -6,6 +6,7 @@ import { useProveedores } from '../../src/providers/ProveedoresContext';
 import type { ImportPreview, Proveedor } from '../../types';
 import { useTenant } from '../../src/tenant/TenantContext';
 import { api } from '../../services/api';
+import { downloadProvidersWorkbook } from '../../services/providersExport';
 
 const emptyForm = { ruc: '', razonSocial: '', personaContacto: '', telefonos: '', email: '', direccion: '', departamento: '', distrito: '', actividadPrincipal: '' };
 
@@ -22,6 +23,7 @@ function ProveedoresPage() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importBusy, setImportBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const canEdit = user?.role === 'administradora' || user?.role === 'supervisor_general';
   const canOpenProviderWorkbench = Boolean(user && user.role !== 'cliente' && user.role !== 'supervisor_empresa');
 
@@ -59,6 +61,14 @@ function ProveedoresPage() {
     finally { setImportBusy(false); }
   };
 
+  const exportProviders = async () => {
+    if (!proveedoresFiltrados.length) return;
+    setExporting(true); setMessage('');
+    try { await downloadProvidersWorkbook(proveedoresFiltrados, selectedEmpresa?.configuracionHomologacion.filters || [], selectedProceso?.codigo || ''); setMessage(`Excel descargado con ${proveedoresFiltrados.length} proveedor(es).`); }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudo generar el archivo Excel.'); }
+    finally { setExporting(false); }
+  };
+
   const setField = (field: keyof typeof emptyForm, value: string) => setForm((current) => ({ ...current, [field]: value }));
 
   return (
@@ -70,7 +80,8 @@ function ProveedoresPage() {
             <p className="context-label">{selectedEmpresa?.razonSocial || 'Sin empresa'} · {selectedProceso?.codigo || 'Sin proceso'}</p>
             <p className="secondary-text">{canEdit ? 'Registra proveedores y administra el estado de su homologación.' : 'Consulta el directorio y estado de los proveedores en modo solo lectura.'}</p>
           </div>
-          {canEdit && selectedProceso ? <div className="provider-actions"><button type="button" className="btn-secondary" onClick={() => document.getElementById('provider-import')?.click()}>Importar Excel</button><input id="provider-import" className="visually-hidden" type="file" accept=".xlsx,.xls" onChange={previewImport} /><button type="button" className="btn-primary" onClick={() => setShowForm((visible) => !visible)}>{showForm ? 'Cancelar' : '+ Nuevo proveedor'}</button></div> : <span className="readonly-badge">{canEdit ? 'Selecciona un proceso' : 'Solo lectura'}</span>}
+          <div className="provider-actions"><button type="button" className="btn-secondary" onClick={() => void exportProviders()} disabled={exporting || !proveedoresFiltrados.length}>{exporting ? 'Generando Excel...' : 'Exportar Excel'}</button>
+          {canEdit && selectedProceso ? <div className="provider-actions"><button type="button" className="btn-secondary" onClick={() => document.getElementById('provider-import')?.click()}>Importar Excel</button><input id="provider-import" className="visually-hidden" type="file" accept=".xlsx,.xls" onChange={previewImport} /><button type="button" className="btn-primary" onClick={() => setShowForm((visible) => !visible)}>{showForm ? 'Cancelar' : '+ Nuevo proveedor'}</button></div> : <span className="readonly-badge">{canEdit ? 'Selecciona un proceso' : 'Solo lectura'}</span>}</div>
         </div>
 
         {showForm && canEdit ? (

@@ -8,7 +8,6 @@ const reportes: Array<{ id: TipoReporteOperativo; title: string; description: st
   { id: 'directorio', title: 'Directorio de proveedores', description: 'Datos de contacto, ubicación y Status del proveedor.' },
   { id: 'facturacion', title: 'Facturación y pagos', description: 'Pagos, formulario y días transcurridos.' },
   { id: 'homologados', title: 'Homologados y vigencias', description: 'Ejecutiva, dictamen, puntaje y vigencia.' },
-  { id: 'inspecciones', title: 'Inspecciones', description: 'Inspector, asignación, visita y días transcurridos.' },
   { id: 'trazabilidad', title: 'Trazabilidad', description: 'Una fila por proveedor con los hitos del proceso.' },
 ];
 
