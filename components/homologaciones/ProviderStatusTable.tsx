@@ -103,7 +103,7 @@ function ProviderStatusTable({ processId, processCode, filterLabels }: Props) {
           </table>
         </div>
       ) : <p className="empty-status">Todavía no hay proveedores registrados en este proceso.</p>}
-      {selectedProvider ? <DeliverablesModal key={selectedProvider.id} providerId={selectedProvider.id} providerName={selectedProvider.razonSocial} documents={selectedProvider.documentosEntregables} onClose={() => setSelectedProvider(null)} /> : null}
+      {selectedProvider ? <DeliverablesModal key={selectedProvider.id} providerId={selectedProvider.id} providerName={selectedProvider.razonSocial} providerRuc={selectedProvider.ruc} documents={selectedProvider.documentosEntregables} onClose={() => setSelectedProvider(null)} /> : null}
     </section>
   );
 }

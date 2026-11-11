@@ -443,8 +443,8 @@ main { padding-top: 0.75rem; }
 .status-column-fechaVencimiento { width: 7%; }
 .status-column-diasPorVencer { width: 7%; }
 .status-column-entregables { width: 10%; }
-.deliverables-button { width: 100%; padding: .38rem .25rem; border: 1px solid #cbd5e1; border-radius: .35rem; background: #fff; color: var(--color-primary); cursor: pointer; font: inherit; font-weight: 750; line-height: 1.15; }
-.deliverables-button:hover { border-color: var(--color-primary); background: #fff5f5; }
+.deliverables-button { width: 100%; padding: .38rem .25rem; border: 1px solid var(--color-primary); border-radius: .45rem; background: #fff5f5; color: var(--color-primary); cursor: pointer; font: inherit; font-weight: 750; line-height: 1.15; }
+.deliverables-button:hover { border-color: var(--color-primary); background: var(--color-primary); color: #fff; }
 .empty-deliverables { color: var(--color-text-muted); }
 .deliverables-modal-backdrop { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 1rem; background: rgba(15,23,42,.58); }
 .deliverables-modal { width: min(1060px, 100%); max-height: min(760px, calc(100vh - 2rem)); display: grid; grid-template-rows: auto minmax(0,1fr) auto; overflow: hidden; border: 1px solid #cbd5e1; border-radius: .9rem; background: #fff; box-shadow: 0 28px 80px rgba(15,23,42,.35); }

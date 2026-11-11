@@ -103,6 +103,8 @@ export async function confirmDocumentUpload(storageKey: string) {
 
 export async function readDocument(storageDriver: string, storageKey: string) {
   if (storageDriver === 'local') return readLocalDocument(storageKey);
+  // Documentos de prueba cargados directamente en la base (el contenido va en base64 dentro de storage_key).
+  if (storageDriver === 'inline') return Buffer.from(storageKey, 'base64');
   if (storageDriver !== NEON_DRIVER) throw new Error('Controlador documental no compatible.');
   const result = await neonS3().send(new GetObjectCommand({ Bucket: neonBucket(), Key: storageKey }));
   if (!result.Body) throw new Error('El archivo no está disponible.');
