@@ -80,7 +80,7 @@ function ProveedoresPage() {
             <p className="context-label">{selectedEmpresa?.razonSocial || 'Sin empresa'} · {selectedProceso?.codigo || 'Sin proceso'}</p>
             <p className="secondary-text">{canEdit ? 'Registra proveedores y administra el estado de su homologación.' : 'Consulta el directorio y estado de los proveedores en modo solo lectura.'}</p>
           </div>
-          <div className="provider-actions"><button type="button" className="btn-secondary" onClick={() => void exportProviders()} disabled={exporting || !proveedoresFiltrados.length}>{exporting ? 'Generando Excel...' : 'Exportar Excel'}</button>
+          <div className="provider-actions" style={{ alignItems: 'center' }}><input className="search-input" style={{ marginTop: 0, width: 'min(320px, 100%)', padding: '0.7rem 1rem' }} type="search" placeholder="Buscar proveedor, RUC o distrito..." aria-label="Buscar proveedor" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="button" className="btn-secondary" onClick={() => void exportProviders()} disabled={exporting || !proveedoresFiltrados.length}>{exporting ? 'Generando Excel...' : 'Exportar Excel'}</button>
           {canEdit && selectedProceso ? <div className="provider-actions"><button type="button" className="btn-secondary" onClick={() => document.getElementById('provider-import')?.click()}>Importar Excel</button><input id="provider-import" className="visually-hidden" type="file" accept=".xlsx,.xls" onChange={previewImport} /><button type="button" className="btn-primary" onClick={() => setShowForm((visible) => !visible)}>{showForm ? 'Cancelar' : '+ Nuevo proveedor'}</button></div> : <span className="readonly-badge">{canEdit ? 'Selecciona un proceso' : 'Solo lectura'}</span>}</div>
         </div>
 
@@ -99,7 +99,6 @@ function ProveedoresPage() {
 
         {message ? <p className="success-message" role="status">{message}</p> : null}
         {importPreview ? <section className="import-preview"><h3>Vista previa: {importFile?.name}</h3><p><strong>{importPreview.summary.readyRows}</strong> filas listas · <strong>{importPreview.summary.rejectedRows}</strong> rechazadas de {importPreview.summary.totalRows}.</p>{importPreview.summary.readyRows ? <button type="button" className="btn-primary" onClick={confirmImport} disabled={importBusy}>Confirmar importación</button> : null}<ul>{importPreview.rows.filter((row) => row.errors.length).slice(0, 8).map((row) => <li key={row.rowNumber}>Fila {row.rowNumber}: {row.errors.join(' ')}</li>)}</ul></section> : null}
-        <input className="search-input" type="search" placeholder="Buscar proveedor, RUC o distrito..." value={search} onChange={(event) => setSearch(event.target.value)} />
         <ProveedoresTable proveedores={proveedoresFiltrados} filterLabels={selectedEmpresa?.configuracionHomologacion.filters || []} showAction={canOpenProviderWorkbench} onSelect={setSelectedProvider} />
       </section>
       {canOpenProviderWorkbench && selectedProvider && selectedEmpresa ? <ProviderWorkbench provider={selectedProvider} companyId={selectedEmpresa.id} configuration={selectedEmpresa.configuracionHomologacion} onChanged={(provider) => { replaceProveedor(provider); setSelectedProvider(provider); }} onClose={() => setSelectedProvider(null)} /> : null}
