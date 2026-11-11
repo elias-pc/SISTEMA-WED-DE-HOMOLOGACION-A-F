@@ -3,7 +3,7 @@
 En este repositorio trabajan **dos agentes Claude** en coordinación, y el dueño del proyecto es **Elías**:
 
 - **Claude VS Code**: trabaja en la PC de Elías, en la rama `desarrollo_local`.
-- **Claude Web**: trabaja en claude.ai/code, en la rama `claude-web`.
+- **Claude Web**: trabaja en claude.ai/code, **directamente en la rama `desplegar`** (decisión de Elías).
 
 ## No ejecutar el sistema en local
 La PC de Elías tiene poca memoria. **No ejecutes** `npm install`, `npm run dev`, `npm run build`, `vite`, `docker-compose` ni ningún servidor o base de datos local.
@@ -13,14 +13,13 @@ El trabajo es solo **editar código, hacer commit y push**. Vercel construye cad
 | Rama | Dueño | Vista previa (Vercel) |
 |---|---|---|
 | `desarrollo_local` | Claude VS Code | https://sistema-wed-de-homologacion-git-desarrollolocal-systen.vercel.app |
-| `claude-web` | Claude Web | https://sistema-wed-de-homologacion-git-claude-web-systen.vercel.app |
-| `desplegar` | Compartida: pruebas finales | https://sistema-wed-de-homologacion-git-desplegar-systen.vercel.app |
+| `desplegar` | Claude Web trabaja aquí; también es la rama de pruebas finales | https://sistema-wed-de-homologacion-git-desplegar-systen.vercel.app |
 | `main` | Producción (nadie hace push directo) | https://sistema-wed-de-homologacion.vercel.app |
 
 Para abrir las vistas previas hay que tener iniciada la sesión de Vercel.
 
 ## Reglas
-1. Cada agente trabaja **solo en su propia rama**. Nunca hagas commit, push, rebase ni borres la rama del otro agente.
+1. Cada agente trabaja **solo en su propia rama**. Claude Web no toca `desarrollo_local`. Claude VS Code solo sube a `desplegar` con el paso 5 (push normal, nunca forzado), así no pisa el trabajo de Claude Web.
 2. **Nunca** hagas push directo a `main`. **Nunca** uses `--force` en `main` ni en `desplegar`.
 3. **Antes de cada tarea**, pon tu rama al día (cambia `<mi-rama>` por tu rama):
    ```bash
