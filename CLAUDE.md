@@ -12,7 +12,7 @@ El trabajo es solo **editar código, hacer commit y push**. Vercel construye cad
 ## Ramas
 | Rama | Dueño | Vista previa (Vercel) |
 |---|---|---|
-| `desarrollo_local` | Claude VS Code | https://sistema-wed-de-homologacion-git-desarrollo-local-systen.vercel.app |
+| `desarrollo_local` | Claude VS Code | https://sistema-wed-de-homologacion-git-desarrollolocal-systen.vercel.app |
 | `claude-web` | Claude Web | https://sistema-wed-de-homologacion-git-claude-web-systen.vercel.app |
 | `desplegar` | Compartida: pruebas finales | https://sistema-wed-de-homologacion-git-desplegar-systen.vercel.app |
 | `main` | Producción (nadie hace push directo) | https://sistema-wed-de-homologacion.vercel.app |
