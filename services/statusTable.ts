@@ -107,14 +107,19 @@ export async function downloadStatusWorkbook(rows: readonly EstadoProveedorRepor
   return columnCount;
 }
 
-const nonSearchableStatusKeys = new Set<string>(['numero', 'diasPorVencer', 'entregables', 'modulos']);
+const nonSearchableStatusKeys = new Set<string>(['numero', 'entregables', 'modulos']);
 
-/** Filtra filas buscando el texto en RUC, Razón Social, Tipo de Documento, filtros, Status, Sub-Status, Dictamen, Puntaje y fechas. */
-export function filterStatusRows(rows: readonly EstadoProveedorReporte[], search: string, definitions: readonly StatusColumn[] = statusColumns) {
+/** Columnas por las que se puede buscar en el status de proveedores. */
+export function searchableStatusColumns(definitions: readonly StatusColumn[] = statusColumns) {
+  return definitions.filter((column) => !nonSearchableStatusKeys.has(column.key));
+}
+
+/** Filtra filas por texto; si se indica una columna, busca solo en esa columna. */
+export function filterStatusRows(rows: readonly EstadoProveedorReporte[], search: string, definitions: readonly StatusColumn[] = statusColumns, field = '') {
   const normalize = (value: string) => value.toLocaleLowerCase('es-PE').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/_/g, ' ');
   const term = normalize(search.trim());
   if (!term) return [...rows];
-  const searchable = definitions.filter((column) => !nonSearchableStatusKeys.has(column.key));
+  const searchable = searchableStatusColumns(definitions).filter((column) => !field || column.key === field);
   return rows.filter((row, index) => searchable.some((column) => {
     const raw = rawStatusValue(row, column, index);
     if (raw === null || raw === undefined || raw === '') return false;

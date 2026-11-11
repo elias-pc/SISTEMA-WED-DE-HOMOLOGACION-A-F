@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../services/api';
-import { buildStatusColumns, downloadStatusWorkbook, filterStatusRows, formatStatusValue, optionalStatusColumnKeys, rawStatusValue, visibleStatusColumns, type StatusColumnKey } from '../../services/statusTable';
+import { buildStatusColumns, downloadStatusWorkbook, filterStatusRows, formatStatusValue, searchableStatusColumns, optionalStatusColumnKeys, rawStatusValue, visibleStatusColumns, type StatusColumnKey } from '../../services/statusTable';
 import type { EstadoProveedorReporte } from '../../types';
 import DeliverablesModal from './DeliverablesModal';
 
@@ -13,6 +13,7 @@ interface Props {
 function ProviderStatusTable({ processId, processCode, filterLabels }: Props) {
   const [allRows, setRows] = useState<EstadoProveedorReporte[]>([]);
   const [search, setSearch] = useState('');
+  const [searchField, setSearchField] = useState('');
   const [selectedOptional, setSelectedOptional] = useState<StatusColumnKey[]>([...optionalStatusColumnKeys]);
   const [selectedProvider, setSelectedProvider] = useState<EstadoProveedorReporte | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -47,7 +48,8 @@ function ProviderStatusTable({ processId, processCode, filterLabels }: Props) {
   const definitions = useMemo(() => buildStatusColumns(filterLabels), [filterLabels]);
   const optionalColumns = useMemo(() => definitions.filter((column) => !column.fixed), [definitions]);
   const columns = useMemo(() => visibleStatusColumns(selectedOptional, definitions), [selectedOptional, definitions]);
-  const rows = useMemo(() => filterStatusRows(allRows, search, definitions), [allRows, search, definitions]);
+  const searchColumns = useMemo(() => searchableStatusColumns(definitions), [definitions]);
+  const rows = useMemo(() => filterStatusRows(allRows, search, definitions, searchField), [allRows, search, definitions, searchField]);
 
   const toggleColumn = (key: StatusColumnKey) => {
     setSelectedOptional((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
@@ -67,7 +69,9 @@ function ProviderStatusTable({ processId, processCode, filterLabels }: Props) {
     <section className="card status-table-card">
       <div className="section-heading status-table-heading">
         <div><h3>Seguimiento detallado de proveedores</h3><p className="secondary-text">Selecciona las columnas que deseas consultar. El Excel conserva únicamente las columnas visibles.</p></div>
-        <div className="status-table-actions">
+        <div className="status-table-actions" style={{ alignItems: 'center' }}>
+          <select aria-label="Buscar en" value={searchField} onChange={(event) => setSearchField(event.target.value)} style={{ width: '170px', padding: '0.6rem 0.7rem', border: '1px solid #dbe0e8', borderRadius: '0.9rem', background: '#fff', fontSize: '0.9rem' }}><option value="">Todas las columnas</option>{searchColumns.map((column) => <option key={column.key} value={column.key}>{column.label}</option>)}</select>
+          <input className="search-input" type="search" placeholder={searchField ? `Buscar por ${searchColumns.find((column) => column.key === searchField)?.label || ''}...` : 'Buscar proveedor o RUC...'} aria-label="Buscar proveedores" value={search} onChange={(event) => setSearch(event.target.value)} style={{ marginTop: 0, width: '220px', padding: '0.6rem 0.9rem', fontSize: '0.9rem' }} />
           <button type="button" className="btn-secondary" onClick={() => void loadRows()} disabled={loading}>Actualizar</button>
           <div className="status-filter-control" ref={filterControlRef}>
             <button type="button" className="btn-secondary" aria-expanded={filterOpen} aria-controls="status-column-filter" onClick={() => setFilterOpen((current) => !current)}>Filtrar columnas ({columns.length})</button>
@@ -87,7 +91,7 @@ function ProviderStatusTable({ processId, processCode, filterLabels }: Props) {
           <button type="button" className="btn-primary" onClick={() => void exportWorkbook()} disabled={loading || exporting || !rows.length}>{exporting ? 'Generando Excel...' : 'Descargar Excel'}</button>
         </div>
       </div>
-      {allRows.length ? <div className="status-search"><input className="search-input" type="search" placeholder="Buscar por RUC, razón social, tipo de documento, filtro, status, sub-status, dictamen, puntaje o fecha..." aria-label="Buscar proveedores" value={search} onChange={(event) => setSearch(event.target.value)} />{search.trim() ? <p className="secondary-text" role="status">{rows.length ? `Mostrando ${rows.length} de ${allRows.length} proveedor(es).` : 'No se encontraron proveedores con esa búsqueda.'}</p> : null}</div> : null}
+      {search.trim() ? <p className="secondary-text" role="status" style={{ textAlign: 'right' }}>{rows.length ? `Mostrando ${rows.length} de ${allRows.length} proveedor(es).` : 'No se encontraron proveedores con esa búsqueda.'}</p> : null}
 
       {message ? <p className={message.startsWith('Excel') ? 'success-message' : 'form-error'} role="status">{message}</p> : null}
       {loading ? <p className="empty-status">Cargando información del proceso...</p> : allRows.length ? (
