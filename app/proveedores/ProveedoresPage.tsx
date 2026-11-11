@@ -74,14 +74,14 @@ function ProveedoresPage() {
   return (
     <div className="container">
       <section className="card">
-        <div className="section-heading">
-          <div>
+        <div className="section-heading" style={{ alignItems: 'center' }}>
+          <div style={{ flex: '1 1 260px', minWidth: 0 }}>
             <h2 className="page-title">Información de proveedores</h2>
             <p className="context-label">{selectedEmpresa?.razonSocial || 'Sin empresa'} · {selectedProceso?.codigo || 'Sin proceso'}</p>
             <p className="secondary-text">{canEdit ? 'Registra proveedores y administra el estado de su homologación.' : 'Consulta el directorio y estado de los proveedores en modo solo lectura.'}</p>
           </div>
-          <div className="provider-actions" style={{ alignItems: 'center' }}><input className="search-input" style={{ marginTop: 0, width: 'min(320px, 100%)', padding: '0.7rem 1rem' }} type="search" placeholder="Buscar proveedor, RUC o distrito..." aria-label="Buscar proveedor" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="button" className="btn-secondary" onClick={() => void exportProviders()} disabled={exporting || !proveedoresFiltrados.length}>{exporting ? 'Generando Excel...' : 'Exportar Excel'}</button>
-          {canEdit && selectedProceso ? <div className="provider-actions"><button type="button" className="btn-secondary" onClick={() => document.getElementById('provider-import')?.click()}>Importar Excel</button><input id="provider-import" className="visually-hidden" type="file" accept=".xlsx,.xls" onChange={previewImport} /><button type="button" className="btn-primary" onClick={() => setShowForm((visible) => !visible)}>{showForm ? 'Cancelar' : '+ Nuevo proveedor'}</button></div> : <span className="readonly-badge">{canEdit ? 'Selecciona un proceso' : 'Solo lectura'}</span>}</div>
+          <div className="provider-actions" style={{ alignItems: 'center', justifyContent: 'flex-end', marginLeft: 'auto' }}><input className="search-input" style={{ marginTop: 0, width: '230px', maxWidth: '100%', padding: '0.6rem 0.9rem', fontSize: '0.9rem' }} type="search" placeholder="Buscar proveedor o RUC..." aria-label="Buscar proveedor" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="button" className="btn-primary" style={{ whiteSpace: 'nowrap', padding: '0.6rem 1rem', fontSize: '0.9rem' }} onClick={() => void exportProviders()} disabled={exporting || !proveedoresFiltrados.length}>{exporting ? 'Generando Excel...' : 'Exportar Excel'}</button>
+          {canEdit && selectedProceso ? <><button type="button" className="btn-primary" style={{ whiteSpace: 'nowrap', padding: '0.6rem 1rem', fontSize: '0.9rem' }} onClick={() => document.getElementById('provider-import')?.click()}>Importar Excel</button><input id="provider-import" className="visually-hidden" type="file" accept=".xlsx,.xls" onChange={previewImport} /><button type="button" className="btn-primary" style={{ whiteSpace: 'nowrap', padding: '0.6rem 1rem', fontSize: '0.9rem' }} onClick={() => setShowForm((visible) => !visible)}>{showForm ? 'Cancelar' : '+ Nuevo proveedor'}</button></> : canEdit ? <span className="readonly-badge">Selecciona un proceso</span> : null}</div>
         </div>
 
         {showForm && canEdit ? (
