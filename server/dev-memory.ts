@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { clearSessionCookie, newSession, SESSION_COOKIE, setSessionCookie } from './security.js';
 import type { SessionUser } from './types.js';
-import { availableTransitions, legacyProviderStatus, validateTransition, type WorkflowState, type WorkflowTransitionCode } from './workflow.js';
+import { availableTransitions, legacyProviderStatus, statusCatalog, transitionDefinition, validateTransition, type WorkflowState, type WorkflowTransitionCode } from './workflow.js';
 import { parseProviderWorkbook } from './provider-import.js';
 import { notificationTemplateForTransition } from './notifications.js';
 import { readLocalDocument, storeLocalDocument } from './document-storage.js';
@@ -17,16 +19,26 @@ import { buildOperationalWorkbook } from './report-workbook.js';
 
 export const memoryRouter = Router();
 const companies = [
-  { id:'decal',razonSocial:'DECAL S.A.C.',ruc:'20512345678',nombreComercial:'DECAL',contacto:'María López',email:'contacto@decal.com',telefono:'987654321',estado:'Activa',configuracionHomologacion:defaultHomologationConfig },
-  { id:'ufitec',razonSocial:'UFITEC S.A.C.',ruc:'20698765432',nombreComercial:'UFITEC',contacto:'José Ramos',email:'contacto@ufitec.com',telefono:'912345678',estado:'Activa',configuracionHomologacion:defaultHomologationConfig },
+  { id:'decal',razonSocial:'DECAL S.A.C.',ruc:'20512345678',nombreComercial:'DECAL',contacto:'María López',email:'contacto@decal.com',telefono:'987654321',estado:'Activa',configuracionHomologacion:{...defaultHomologationConfig,filters:['Rubro']} },
+  { id:'ufitec',razonSocial:'UFITEC S.A.C.',ruc:'20698765432',nombreComercial:'UFITEC',contacto:'José Ramos',email:'contacto@ufitec.com',telefono:'912345678',estado:'Activa',configuracionHomologacion:{...defaultHomologationConfig,filters:['Rubro']} },
 ];
 const processes = [
   { id:'proc-decal-2026',empresaId:'decal',codigo:'DECAL-2026-001',nombre:'Homologación de proveedores 2026',fechaInicio:'2026-01-15',fechaLimite:'2026-10-30',estado:'En curso',ejecutivaId:'eje-decal' },
   { id:'proc-ufitec-2026',empresaId:'ufitec',codigo:'UFITEC-2026-001',nombre:'Homologación anual 2026',fechaInicio:'2026-02-01',fechaLimite:'2026-11-15',estado:'En curso',ejecutivaId:'eje-ufitec' },
 ];
 const providers: Array<Record<string, any>> = [
-  { id:'p-001',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'Soluciones A&F SAC',ruc:'20501234567',personaContacto:'Mary Timoteo Mallma',telefonos:'502-5438 anexo 104,9',email:'contabilidad@3nexsac.com',direccion:'Av. Morales Duarez Nro. 1508',departamento:'CALLAO',distrito:'Carmen de La Legua',actividadPrincipal:'Otras actividades de apoyo',estado:'En proceso',estadoEjecutiva:'Formulario respondido',estadoSupervisor:'En coordinación',calificacion:4.8,fechaRegistro:'2025-03-12',vigencia:'2026-03-12',ejecutivaAsignadaId:'eje-decal',flujo:{paso:7,estado:'INSCRITO',subestado:'VISITA_EN_COORDINACION',version:0} },
-  { id:'p-002',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'3A Ingenieria y Servicios Generales E.I.R.L.',ruc:'20610564551',personaContacto:'Mily Lopez Leon',telefonos:'932109562',email:'info@3aingenieria.com',direccion:'Calle San Antonio Este 619',departamento:'LIMA',distrito:'Rimac',actividadPrincipal:'Venta al por mayor',estado:'En proceso',estadoEjecutiva:'Formulario enviado',calificacion:3.9,fechaRegistro:'2025-02-04',vigencia:'N/A',ejecutivaAsignadaId:'eje-decal-2',flujo:{paso:5,estado:'INSCRITO',subestado:'FORMULARIO_ENVIADO',version:0} },
+  { id:'p-001',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'Soluciones A&F SAC',ruc:'20501234567',personaContacto:'Mary Timoteo Mallma',telefonos:'502-5438 anexo 104,9',email:'contabilidad@3nexsac.com',direccion:'Av. Morales Duarez Nro. 1508',departamento:'CALLAO',distrito:'Carmen de La Legua',actividadPrincipal:'Otras actividades de apoyo',estado:'En proceso',estadoEjecutiva:'Formulario respondido',estadoSupervisor:'En coordinación',calificacion:4.8,fechaRegistro:'2025-03-12',vigencia:'N/A',ejecutivaAsignadaId:'eje-decal',inspectorAsignadoId:'inspector-decal',atributos:{filtro_1:'Servicios generales'},flujo:{paso:7,estado:'INSCRITO',subestado:'VISITA_EN_COORDINACION',version:0} },
+  { id:'p-002',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'3A Ingenieria y Servicios Generales E.I.R.L.',ruc:'20610564551',personaContacto:'Mily Lopez Leon',telefonos:'932109562',email:'info@3aingenieria.com',direccion:'Calle San Antonio Este 619',departamento:'LIMA',distrito:'Rimac',actividadPrincipal:'Venta al por mayor',estado:'En proceso',estadoEjecutiva:'Formulario enviado',calificacion:3.9,fechaRegistro:'2025-02-04',vigencia:'N/A',ejecutivaAsignadaId:'eje-decal-2',atributos:{filtro_1:'Construcción'},flujo:{paso:5,estado:'INSCRITO',subestado:'FORMULARIO_ENVIADO',version:0} },
+  { id:'p-003',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'Corporación Andina de Suministros S.A.C.',ruc:'20553456789',personaContacto:'Rosa Quispe Huamán',telefonos:'987112233',email:'compras@andinasuministros.com',direccion:'Av. Nicolás Ayllón 2450',departamento:'LIMA',distrito:'Ate',actividadPrincipal:'Venta al por mayor de materiales',estado:'En proceso',estadoEjecutiva:'Contactado',calificacion:4.2,fechaRegistro:'2026-06-18',vigencia:'N/A',ejecutivaAsignadaId:'eje-decal',atributos:{filtro_1:'Comercialización'},flujo:{paso:4,estado:'PENDIENTE_INSCRIPCION',subestado:'EN_COORDINACION',version:0} },
+  { id:'p-004',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'Servicios Generales del Pacífico S.R.L.',ruc:'20601239876',personaContacto:'Luis Alberto Chávez',telefonos:'956778899',email:'operaciones@pacificoservicios.com',direccion:'Jr. Loreto 315',departamento:'CALLAO',distrito:'Bellavista',actividadPrincipal:'Servicios de limpieza y mantenimiento',estado:'En proceso',estadoEjecutiva:'Contactado',calificacion:4.5,fechaRegistro:'2026-08-22',vigencia:'N/A',ejecutivaAsignadaId:'eje-decal',atributos:{filtro_1:'Servicios generales'},flujo:{paso:4,estado:'PENDIENTE_INSCRIPCION',subestado:'CONFIRMARON_PARTICIPACION',version:0} },
+  { id:'p-005',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'Distribuidora Lima Norte S.A.C.',ruc:'20547890123',personaContacto:'Carmen Rojas Paredes',telefonos:'948223344',email:'ventas@limanorte.com.pe',direccion:'Av. Alfredo Mendiola 3698',departamento:'LIMA',distrito:'Los Olivos',actividadPrincipal:'Distribución de productos de consumo',estado:'En proceso',estadoEjecutiva:'Contactado',calificacion:3.8,fechaRegistro:'2026-07-05',vigencia:'N/A',ejecutivaAsignadaId:'eje-decal',atributos:{filtro_1:'Comercialización'},flujo:{paso:5,estado:'INSCRITO',subestado:'PAGO_CONFIRMADO',version:0} },
+  { id:'p-006',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'Tecnología Industrial Perú S.A.C.',ruc:'20604567812',personaContacto:'Jorge Medina Salas',telefonos:'911445566',email:'proyectos@tecnoindustrial.pe',direccion:'Av. Tomás Marsano 1450',departamento:'LIMA',distrito:'Surquillo',actividadPrincipal:'Instalación de sistemas industriales',estado:'En proceso',estadoEjecutiva:'Formulario respondido',calificacion:4.1,fechaRegistro:'2026-05-14',vigencia:'N/A',ejecutivaAsignadaId:'eje-decal-2',atributos:{filtro_1:'Tecnología'},flujo:{paso:6,estado:'INSCRITO',subestado:'FORMULARIO_DEVUELTO',version:0} },
+  { id:'p-007',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'Logística Integral Callao S.A.',ruc:'20517890456',personaContacto:'Ana Cecilia Torres',telefonos:'997334455',email:'logistica@integralcallao.com',direccion:'Av. Elmer Faucett 820',departamento:'CALLAO',distrito:'Callao',actividadPrincipal:'Almacenamiento y transporte de carga',estado:'En proceso',calificacion:4.3,fechaRegistro:'2026-04-30',vigencia:'N/A',ejecutivaAsignadaId:'eje-decal',inspectorAsignadoId:'inspector-decal',atributos:{filtro_1:'Logística'},flujo:{paso:7,estado:'INSCRITO',subestado:'INSPECTOR_ASIGNADO',version:0} },
+  { id:'p-008',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'Construcciones y Montajes del Sur E.I.R.L.',ruc:'20487654321',personaContacto:'Pedro Ccahuana Flores',telefonos:'959887766',email:'obras@montajessur.com',direccion:'Av. Independencia 1204',departamento:'AREQUIPA',distrito:'Arequipa',actividadPrincipal:'Construcción de obras civiles',estado:'En proceso',estadoSupervisor:'Visita realizada',calificacion:4.0,fechaRegistro:'2026-03-19',vigencia:'N/A',ejecutivaAsignadaId:'eje-decal',inspectorAsignadoId:'inspector-decal',atributos:{filtro_1:'Construcción'},flujo:{paso:7,estado:'INSCRITO',subestado:'VISITA_REALIZADA',version:0} },
+  { id:'p-009',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'Suministros Médicos Andinos S.A.C.',ruc:'20608901234',personaContacto:'María Elena Vargas',telefonos:'934556677',email:'compras@medicosandinos.pe',direccion:'Av. Javier Prado Este 1250',departamento:'LIMA',distrito:'San Isidro',actividadPrincipal:'Venta de equipos médicos',estado:'En proceso',estadoEjecutiva:'Formulario respondido',calificacion:4.6,fechaRegistro:'2026-02-11',vigencia:'N/A',ejecutivaAsignadaId:'eje-decal',inspectorAsignadoId:'inspector-decal',atributos:{filtro_1:'Salud'},flujo:{paso:8,estado:'INSCRITO',subestado:'PENDIENTE_ENTREGABLES',version:0} },
+  { id:'p-010',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'Seguridad y Vigilancia Corporativa S.A.C.',ruc:'20546781234',personaContacto:'Carlos Mendoza Ríos',telefonos:'981223344',email:'contacto@vigilanciacorporativa.pe',direccion:'Av. Larco 345',departamento:'LIMA',distrito:'Miraflores',actividadPrincipal:'Servicios de seguridad privada',estado:'Homologado',calificacion:4.9,fechaRegistro:'2025-09-15',vigencia:'2027-04-15',ejecutivaAsignadaId:'eje-decal',atributos:{filtro_1:'Seguridad'},flujo:{paso:9,estado:'HOMOLOGADO',subestado:'VIGENTE',version:0} },
+  { id:'p-011',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'Equipos y Repuestos Industriales S.A.C.',ruc:'20512349876',personaContacto:'Silvia Navarro Ruiz',telefonos:'943778899',email:'ventas@equiposindustriales.com',direccion:'Av. Panamericana Norte 2100',departamento:'LIMA',distrito:'San Martín de Porres',actividadPrincipal:'Comercialización de equipos industriales',estado:'Homologado',calificacion:4.4,fechaRegistro:'2025-08-02',vigencia:'2026-12-10',ejecutivaAsignadaId:'eje-decal',atributos:{filtro_1:'Industrial'},flujo:{paso:9,estado:'HOMOLOGADO',subestado:'POR_VENCER',version:0} },
+  { id:'p-012',empresaId:'decal',procesoId:'proc-decal-2026',razonSocial:'Redes y Comunicaciones del Perú S.A.C.',ruc:'20599887766',personaContacto:'Diego Salazar Ponce',telefonos:'966554433',email:'soporte@redesperu.com.pe',direccion:'Av. Caminos del Inca 1590',departamento:'LIMA',distrito:'Santiago de Surco',actividadPrincipal:'Instalación de redes de comunicación',estado:'Vencido',calificacion:3.7,fechaRegistro:'2025-07-21',vigencia:'2026-09-30',ejecutivaAsignadaId:'eje-decal',atributos:{filtro_1:'Tecnología'},flujo:{paso:9,estado:'HOMOLOGADO',subestado:'VENCIDO',version:0} },
 ];
 const workflowHistory = new Map<string,Array<Record<string,unknown>>>();
 const providerDossiers = new Map<string,{
@@ -55,6 +67,125 @@ function dossier(providerId:string) {
  if(!value){value={assignments:[],payments:[],forms:[],inspections:[],documents:[],certificates:[],contactPreferences:null,notifications:[]};providerDossiers.set(providerId,value)}
  return value;
 }
+
+const demoAssignments: Array<[string,'ejecutiva'|'inspector',string,string]> = [
+ ['p-001','ejecutiva','eje-decal','2026-08-01T10:00:00.000Z'],['p-002','ejecutiva','eje-decal-2','2026-09-01T09:30:00.000Z'],
+ ['p-003','ejecutiva','eje-decal','2026-06-20T11:00:00.000Z'],['p-004','ejecutiva','eje-decal','2026-08-20T08:45:00.000Z'],
+ ['p-005','ejecutiva','eje-decal','2026-07-08T10:15:00.000Z'],['p-006','ejecutiva','eje-decal-2','2026-05-16T14:00:00.000Z'],
+ ['p-007','ejecutiva','eje-decal','2026-05-02T09:00:00.000Z'],['p-008','ejecutiva','eje-decal','2026-03-21T10:30:00.000Z'],
+ ['p-009','ejecutiva','eje-decal','2026-02-13T09:45:00.000Z'],['p-010','ejecutiva','eje-decal','2025-09-17T10:00:00.000Z'],
+ ['p-011','ejecutiva','eje-decal','2025-08-04T09:20:00.000Z'],['p-012','ejecutiva','eje-decal','2025-07-23T11:10:00.000Z'],
+ ['p-007','inspector','inspector-decal','2026-09-28T15:00:00.000Z'],['p-008','inspector','inspector-decal','2026-09-15T09:15:00.000Z'],
+ ['p-009','inspector','inspector-decal','2026-09-10T09:00:00.000Z'],['p-010','inspector','inspector-decal','2025-10-20T10:00:00.000Z'],
+ ['p-001','inspector','inspector-decal','2026-10-05T09:00:00.000Z'],
+];
+const demoPayments: Array<[string,Record<string,unknown>]> = [
+ ['p-001',{bank:'BCP',amount:1200,modality:'Transferencia',paid_on:'2026-08-07',operation_number:'00451021',invoice_number:'F001-2301'}],
+ ['p-002',{bank:'Interbank',amount:1350,modality:'Transferencia',paid_on:'2026-09-04',operation_number:'00781244',invoice_number:'F001-2412'}],
+ ['p-006',{bank:'BBVA',amount:1500,modality:'Depósito',paid_on:'2026-05-22',operation_number:'00981452',invoice_number:'F001-2115'}],
+ ['p-007',{bank:'BCP',amount:1450,modality:'Transferencia',paid_on:'2026-05-14',operation_number:'00452388',invoice_number:'F001-2204'}],
+ ['p-008',{bank:'Scotiabank',amount:1600,modality:'Transferencia',paid_on:'2026-04-03',operation_number:'00112390',invoice_number:'F001-2143'}],
+ ['p-009',{bank:'BBVA',amount:1550,modality:'Transferencia',paid_on:'2026-02-25',operation_number:'00987701',invoice_number:'F001-2088'}],
+ ['p-010',{bank:'BCP',amount:1800,modality:'Transferencia',paid_on:'2025-10-01',operation_number:'00438812',invoice_number:'F001-1952'}],
+ ['p-011',{bank:'Interbank',amount:1700,modality:'Depósito',paid_on:'2025-08-18',operation_number:'00779021',invoice_number:'F001-1876'}],
+ ['p-012',{bank:'BCP',amount:1650,modality:'Transferencia',paid_on:'2025-08-05',operation_number:'00436210',invoice_number:'F001-1844'}],
+];
+const demoForms: Array<[string,Record<string,unknown>]> = [
+ ['p-001',{form_name:'Formulario de homologación de proveedores',sent_at:'2026-08-08T15:00:00.000Z',received_at:'2026-08-14T10:20:00.000Z',documentos_conform:true}],
+ ['p-002',{form_name:'Formulario de homologación de proveedores',sent_at:'2026-09-10T15:00:00.000Z'}],
+ ['p-006',{form_name:'Formulario de homologación de proveedores',sent_at:'2026-09-05T12:00:00.000Z',received_at:'2026-09-12T16:30:00.000Z',documentos_conform:false}],
+ ['p-007',{form_name:'Formulario de homologación de proveedores',sent_at:'2026-05-20T09:00:00.000Z',received_at:'2026-05-28T11:45:00.000Z',documentos_conform:true}],
+ ['p-008',{form_name:'Formulario de homologación de proveedores',sent_at:'2026-03-28T10:00:00.000Z',received_at:'2026-04-05T09:30:00.000Z',documentos_conform:true}],
+ ['p-009',{form_name:'Formulario de homologación de proveedores',sent_at:'2026-08-20T09:00:00.000Z',received_at:'2026-08-27T15:10:00.000Z',documentos_conform:true}],
+ ['p-010',{form_name:'Formulario de homologación de proveedores',sent_at:'2025-09-25T09:00:00.000Z',received_at:'2025-10-02T10:00:00.000Z',documentos_conform:true}],
+ ['p-011',{form_name:'Formulario de homologación de proveedores',sent_at:'2025-08-11T09:00:00.000Z',received_at:'2025-08-19T10:00:00.000Z',documentos_conform:true}],
+ ['p-012',{form_name:'Formulario de homologación de proveedores',sent_at:'2025-07-30T09:00:00.000Z',received_at:'2025-08-07T10:00:00.000Z',documentos_conform:true}],
+];
+const demoInspections: Array<[string,Record<string,unknown>]> = [
+ ['p-001',{modality:'Presencial',scheduled_at:'2026-11-18T09:00:00.000Z',status:'PROGRAMADA'}],
+ ['p-008',{modality:'Presencial',scheduled_at:'2026-10-10T10:00:00.000Z',completed_at:'2026-10-10T12:30:00.000Z',status:'REALIZADA',report_reference:'Informe de visita - Montajes del Sur.pdf'}],
+ ['p-009',{modality:'Virtual',scheduled_at:'2026-09-20T11:00:00.000Z',completed_at:'2026-09-20T12:15:00.000Z',status:'REALIZADA',report_reference:'Informe de visita - Suministros Médicos Andinos.pdf'}],
+ ['p-010',{modality:'Presencial',scheduled_at:'2025-11-05T10:00:00.000Z',completed_at:'2025-11-05T12:00:00.000Z',status:'REALIZADA',report_reference:'Informe de visita - Miraflores.pdf'}],
+];
+const demoCertificates: Array<[string,Record<string,unknown>]> = [
+ ['p-010',{document_type:'Certificado',opinion:'Apto',score:94.5,issued_on:'2026-04-20',expires_on:'2027-04-15',scope:'Servicios de seguridad privada',result_summary:'Proveedor homologado sin observaciones.',modules:[{nombre:'Formalidad y legales',puntaje:96},{nombre:'Capacidad operativa',puntaje:92},{nombre:'SSO',puntaje:90},{nombre:'Calidad',puntaje:95},{nombre:'Ambiental',puntaje:93},{nombre:'Responsabilidad social',puntaje:94},{nombre:'Económica-financiera',puntaje:88}]}],
+ ['p-011',{document_type:'Certificado',opinion:'Apto',score:88,issued_on:'2025-12-15',expires_on:'2026-12-10',scope:'Comercialización de equipos industriales',result_summary:'Proveedor homologado con observaciones menores levantadas.',modules:[{nombre:'Formalidad y legales',puntaje:90},{nombre:'Capacidad operativa',puntaje:86},{nombre:'Calidad',puntaje:87},{nombre:'Comerciales',puntaje:84},{nombre:'Económica-financiera',puntaje:80}]}],
+ ['p-012',{document_type:'Constancia',opinion:'Apto',score:76,issued_on:'2025-10-05',expires_on:'2026-09-30',scope:'Instalación de redes de comunicación',result_summary:'Homologación pendiente de renovación.',modules:[{nombre:'Formalidad y legales',puntaje:80},{nombre:'Capacidad operativa',puntaje:74},{nombre:'Calidad',puntaje:70},{nombre:'SSO',puntaje:78}]}],
+];
+const demoDocuments: Array<[string,string]> = [
+ ['p-001','Ficha RUC - Soluciones A&F SAC.pdf'],['p-001','Formulario de homologación firmado.pdf'],
+ ['p-002','Formulario de homologación - 3A Ingeniería.pdf'],
+ ['p-003','Ficha RUC - Corporación Andina.pdf'],['p-003','Carta de presentación.pdf'],
+ ['p-004','Formulario de inscripción.pdf'],
+ ['p-005','Voucher de pago - BCP.pdf'],
+ ['p-006','Formulario devuelto - Tecnología Industrial.pdf'],['p-006','Carta de subsanación.pdf'],
+ ['p-007','Orden de visita - Logística Integral Callao.pdf'],
+ ['p-008','Informe de visita - Montajes del Sur.pdf'],['p-008','Panel fotográfico.pdf'],
+ ['p-009','Cotización de equipos médicos.pdf'],['p-009','Ficha RUC - Suministros Médicos Andinos.pdf'],
+ ['p-010','Certificado de homologación 2026.pdf'],['p-010','Informe de visita - Miraflores.pdf'],
+ ['p-011','Certificado de homologación 2025.pdf'],
+ ['p-012','Constancia de homologación 2025.pdf'],
+];
+const demoHistory: Array<[string,Array<[WorkflowTransitionCode,string]>]> = [
+ ['p-001',[['ASIGNAR_EJECUTIVA','2026-08-01T10:00:00.000Z'],['INICIAR_COORDINACION','2026-08-06T09:00:00.000Z'],['REGISTRAR_PAGO','2026-08-07T11:00:00.000Z'],['ENVIAR_FORMULARIO','2026-08-08T15:00:00.000Z'],['RECIBIR_FORMULARIO','2026-08-14T10:20:00.000Z'],['ASIGNAR_INSPECTOR','2026-10-05T09:00:00.000Z'],['PROGRAMAR_VISITA','2026-10-28T09:00:00.000Z']]],
+ ['p-002',[['ASIGNAR_EJECUTIVA','2026-09-01T09:30:00.000Z'],['INICIAR_COORDINACION','2026-09-02T10:00:00.000Z'],['REGISTRAR_PAGO','2026-09-04T11:30:00.000Z'],['ENVIAR_FORMULARIO','2026-09-10T15:00:00.000Z']]],
+ ['p-003',[['ASIGNAR_EJECUTIVA','2026-06-20T11:00:00.000Z'],['INICIAR_COORDINACION','2026-06-25T09:00:00.000Z']]],
+ ['p-004',[['ASIGNAR_EJECUTIVA','2026-08-20T08:45:00.000Z'],['INICIAR_COORDINACION','2026-08-24T10:00:00.000Z'],['CONFIRMAR_PARTICIPACION','2026-09-01T09:30:00.000Z']]],
+ ['p-005',[['ASIGNAR_EJECUTIVA','2026-07-08T10:15:00.000Z'],['INICIAR_COORDINACION','2026-07-15T09:00:00.000Z'],['REGISTRAR_PAGO','2026-09-18T10:00:00.000Z']]],
+ ['p-006',[['ASIGNAR_EJECUTIVA','2026-05-16T14:00:00.000Z'],['INICIAR_COORDINACION','2026-05-20T09:00:00.000Z'],['REGISTRAR_PAGO','2026-05-22T10:00:00.000Z'],['ENVIAR_FORMULARIO','2026-09-05T12:00:00.000Z'],['RECIBIR_FORMULARIO','2026-09-12T16:30:00.000Z']]],
+ ['p-007',[['ASIGNAR_EJECUTIVA','2026-05-02T09:00:00.000Z'],['INICIAR_COORDINACION','2026-05-06T09:00:00.000Z'],['REGISTRAR_PAGO','2026-05-14T10:00:00.000Z'],['ENVIAR_FORMULARIO','2026-05-20T09:00:00.000Z'],['RECIBIR_FORMULARIO','2026-05-28T11:45:00.000Z'],['ASIGNAR_INSPECTOR','2026-09-28T15:00:00.000Z']]],
+ ['p-008',[['ASIGNAR_EJECUTIVA','2026-03-21T10:30:00.000Z'],['INICIAR_COORDINACION','2026-03-25T09:00:00.000Z'],['REGISTRAR_PAGO','2026-04-03T10:00:00.000Z'],['ENVIAR_FORMULARIO','2026-03-28T10:00:00.000Z'],['RECIBIR_FORMULARIO','2026-04-05T09:30:00.000Z'],['ASIGNAR_INSPECTOR','2026-09-15T09:15:00.000Z'],['PROGRAMAR_VISITA','2026-09-30T08:30:00.000Z'],['REGISTRAR_VISITA','2026-10-10T12:30:00.000Z']]],
+ ['p-009',[['ASIGNAR_EJECUTIVA','2026-02-13T09:45:00.000Z'],['INICIAR_COORDINACION','2026-02-18T09:00:00.000Z'],['REGISTRAR_PAGO','2026-02-25T10:00:00.000Z'],['ENVIAR_FORMULARIO','2026-08-20T09:00:00.000Z'],['RECIBIR_FORMULARIO','2026-08-27T15:10:00.000Z'],['ASIGNAR_INSPECTOR','2026-09-10T09:00:00.000Z'],['PROGRAMAR_VISITA','2026-09-15T10:00:00.000Z'],['REGISTRAR_VISITA','2026-09-20T12:15:00.000Z'],['CONFIRMAR_CONFORMIDAD','2026-09-24T10:00:00.000Z']]],
+ ['p-010',[['ASIGNAR_EJECUTIVA','2025-09-17T10:00:00.000Z'],['INICIAR_COORDINACION','2025-09-22T09:00:00.000Z'],['REGISTRAR_PAGO','2025-10-01T10:00:00.000Z'],['ENVIAR_FORMULARIO','2025-09-25T09:00:00.000Z'],['RECIBIR_FORMULARIO','2025-10-02T10:00:00.000Z'],['ASIGNAR_INSPECTOR','2025-10-20T10:00:00.000Z'],['PROGRAMAR_VISITA','2025-10-28T09:00:00.000Z'],['REGISTRAR_VISITA','2025-11-05T12:00:00.000Z'],['CONFIRMAR_CONFORMIDAD','2025-11-12T09:00:00.000Z'],['EMITIR_ENTREGABLE','2026-04-20T10:00:00.000Z']]],
+ ['p-011',[['ASIGNAR_EJECUTIVA','2025-08-04T09:20:00.000Z'],['INICIAR_COORDINACION','2025-08-06T09:00:00.000Z'],['REGISTRAR_PAGO','2025-08-18T10:00:00.000Z'],['ENVIAR_FORMULARIO','2025-08-11T09:00:00.000Z'],['RECIBIR_FORMULARIO','2025-08-19T10:00:00.000Z'],['ASIGNAR_INSPECTOR','2025-09-10T09:00:00.000Z'],['PROGRAMAR_VISITA','2025-09-18T09:00:00.000Z'],['REGISTRAR_VISITA','2025-09-29T12:00:00.000Z'],['CONFIRMAR_CONFORMIDAD','2025-10-06T09:00:00.000Z'],['EMITIR_ENTREGABLE','2025-12-15T10:00:00.000Z'],['MARCAR_POR_VENCER','2026-10-26T03:00:00.000Z']]],
+ ['p-012',[['ASIGNAR_EJECUTIVA','2025-07-23T11:10:00.000Z'],['INICIAR_COORDINACION','2025-07-28T09:00:00.000Z'],['REGISTRAR_PAGO','2025-08-05T10:00:00.000Z'],['ENVIAR_FORMULARIO','2025-07-30T09:00:00.000Z'],['RECIBIR_FORMULARIO','2025-08-07T10:00:00.000Z'],['ASIGNAR_INSPECTOR','2025-08-20T09:00:00.000Z'],['PROGRAMAR_VISITA','2025-08-28T09:00:00.000Z'],['REGISTRAR_VISITA','2025-09-08T12:00:00.000Z'],['CONFIRMAR_CONFORMIDAD','2025-09-15T09:00:00.000Z'],['EMITIR_ENTREGABLE','2025-10-05T10:00:00.000Z'],['MARCAR_POR_VENCER','2026-08-26T03:00:00.000Z'],['MARCAR_VENCIDO','2026-10-01T03:00:00.000Z']]],
+];
+
+function seedDemoDossier() {
+ const now=new Date().toISOString();
+ for(const [providerId,role,userId,assignedAt] of demoAssignments) dossier(providerId).assignments.push({id:randomUUID(),provider_id:providerId,assignment_role:role,assigned_user_id:userId,assigned_by_user_id:role==='inspector'?'jefe-decal':'admin-af',assigned_at:assignedAt,reason:role==='inspector'?'Asignación de inspección.':'Carga inicial de cartera.'});
+ for(const [providerId,payment] of demoPayments) dossier(providerId).payments.push({id:randomUUID(),provider_id:providerId,...payment,created_at:`${String(payment.paid_on)}T10:00:00.000Z`});
+ for(const [providerId,form] of demoForms) dossier(providerId).forms.push({id:randomUUID(),provider_id:providerId,...form,created_at:String(form.sent_at)});
+ for(const [providerId,inspection] of demoInspections) dossier(providerId).inspections.push({id:randomUUID(),provider_id:providerId,...inspection,created_at:String(inspection.scheduled_at)});
+ for(const [providerId,certificate] of demoCertificates) dossier(providerId).certificates.push({id:randomUUID(),provider_id:providerId,...certificate,created_at:`${String(certificate.issued_on)}T10:00:00.000Z`});
+ for(const [providerId,events] of demoHistory) {
+  const provider=providers.find(item=>item.id===providerId); if(!provider)continue;
+  let state:WorkflowState={step:2,status:'PENDIENTE_INSCRIPCION',substatus:'REGISTRADO'};
+  const entries:Array<Record<string,unknown>>=[];
+  for(const [code,createdAt] of events) {
+   const transition=transitionDefinition(code); if(!transition)continue;
+   const isVisit=['PROGRAMAR_VISITA','REPROGRAMAR_VISITA','REGISTRAR_VISITA','CONFIRMAR_CONFORMIDAD'].includes(code);
+   const actorId=code==='ASIGNAR_EJECUTIVA'?'admin-af':code==='ASIGNAR_INSPECTOR'?'jefe-decal':isVisit?String(provider.inspectorAsignadoId||'inspector-decal'):code.startsWith('MARCAR_')?'sistema':String(provider.ejecutivaAsignadaId);
+   const actor=users.find(item=>item.id===actorId);
+   entries.unshift({id:randomUUID(),transition_code:code,from_step:state.step,from_status:state.status,from_substatus:state.substatus,to_step:transition.to.step,to_status:transition.to.status,to_substatus:transition.to.substatus,actor_user_id:actorId,actor_role:actor?.role||'sistema',reason:null,metadata:{origen:'carga demo'},created_at:createdAt});
+   state={step:transition.to.step,status:transition.to.status,substatus:transition.to.substatus};
+  }
+  workflowHistory.set(providerId,entries);
+ }
+ const writesEnabled=!config.isProduction&&process.env.NODE_ENV!=='test'&&process.env.VITEST!=='true';
+ const root=path.resolve(process.cwd(),config.documentStoragePath);
+ for(const [providerId,fileName] of demoDocuments) {
+  const provider=providers.find(item=>item.id===providerId); if(!provider)continue;
+  const storageKey=`demo/${providerId}/${fileName.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+  const content=demoPdf(fileName.replace(/\.pdf$/,''),[`Proveedor: ${provider.razonSocial}`,`RUC: ${provider.ruc}`,'Documento de demostración del expediente de homologación AYF.']);
+  dossier(providerId).documents.push({id:randomUUID(),category:'Expediente',original_name:fileName,mime_type:'application/pdf',byte_size:content.length,storage_driver:'local',storage_key:storageKey,created_at:now});
+  if(writesEnabled)void mkdir(path.dirname(path.resolve(root,storageKey)),{recursive:true}).then(()=>writeFile(path.resolve(root,storageKey),content)).catch(()=>undefined);
+ }
+}
+
+function demoPdf(title:string,lines:string[]) {
+ const clean=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7E]/g,' ');
+ const escape=(value:string)=>clean(value).replace(/([\\()])/g,'\\$1');
+ const content=`BT /F1 16 Tf 60 780 Td (${escape(title)}) Tj ET\nBT /F1 11 Tf 60 748 Td 16 TL ${lines.map(line=>`(${escape(line)}) Tj T*`).join(' ')} ET`;
+ const objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',`<< /Length ${Buffer.byteLength(content,'latin1')} >>\nstream\n${content}\nendstream`];
+ let pdf='%PDF-1.4\n'; const offsets:number[]=[];
+ objects.forEach((body,index)=>{offsets.push(Buffer.byteLength(pdf,'latin1'));pdf+=`${index+1} 0 obj\n${body}\nendobj\n`});
+ const xref=Buffer.byteLength(pdf,'latin1');
+ pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n${offsets.map(offset=>`${String(offset).padStart(10,'0')} 00000 n \n`).join('')}trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+ return Buffer.from(pdf,'latin1');
+}
+
+if(config.useMemoryDatabase)seedDemoDossier();
 
 function memoryRecords(provider:Record<string,any>,transition:WorkflowTransitionCode,data:Record<string,any>,actor:SessionUser) {
  const records=dossier(provider.id), now=new Date().toISOString();
@@ -157,7 +288,7 @@ memoryRouter.post('/assignments/unassign',requireUser,(request,response)=>{
  if(!process||!executiveId||ids.some(id=>!providers.some(item=>item.id===id&&item.procesoId===process.id)))return response.status(422).json({error:'Los proveedores o la ejecutiva no son válidos para este proceso.'});let unassigned=0;const now=new Date().toISOString();for(const id of ids){const provider=providers.find(item=>item.id===id)!;const active=dossier(id).assignments.find(item=>item.assignment_role==='ejecutiva'&&item.assigned_user_id===executiveId&&!item.released_at);if(active)Object.assign(active,{released_at:now,released_by_user_id:user.id,release_reason:String(request.body.reason||'Retiro de cartera.')});const idsAfter=activeExecutiveIds(provider).filter(item=>item!==executiveId);if(idsAfter.length!==activeExecutiveIds(provider).length){setActiveExecutiveIds(provider,idsAfter);unassigned+=1}}response.json({unassigned,unchanged:ids.length-unassigned});
 });
 memoryRouter.patch('/providers/:id/status',requireUser,(_request,response)=>response.status(410).json({error:'El cambio libre de estado fue retirado. Utiliza una transición válida del flujo.'}));
-memoryRouter.get('/providers/:id/workflow',requireUser,(request,response)=>{const user=response.locals.user as SessionUser,provider=providers.find(item=>item.id===request.params.id);if(!provider)return response.status(404).json({error:'Proveedor no encontrado.'});if(!canSeeProvider(user,provider))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});response.json({provider,transicionesDisponibles:memoryTransitions(provider,user),historial:workflowHistory.get(provider.id)||[]})});
+memoryRouter.get('/providers/:id/workflow',requireUser,(request,response)=>{const user=response.locals.user as SessionUser,provider=providers.find(item=>item.id===request.params.id);if(!provider)return response.status(404).json({error:'Proveedor no encontrado.'});if(!canSeeProvider(user,provider))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});response.json({provider,transicionesDisponibles:memoryTransitions(provider,user),catalogoEstados:statusCatalog,historial:workflowHistory.get(provider.id)||[]})});
 memoryRouter.get('/providers/:id/dossier',requireUser,(request,response)=>{const user=response.locals.user as SessionUser,provider=providers.find(item=>item.id===request.params.id);if(!provider)return response.status(404).json({error:'Proveedor no encontrado.'});if(!canSeeProvider(user,provider))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});response.json(dossier(provider.id))});
 memoryRouter.put('/providers/:id/contact-preferences',requireUser,(request,response)=>{const user=response.locals.user as SessionUser,provider=providers.find(item=>item.id===request.params.id);if(!provider)return response.status(404).json({error:'Proveedor no encontrado.'});if(!['supervisor_general','administradora','ejecutiva'].includes(user.role)||!canSeeProvider(user,provider))return response.status(403).json({error:'No tienes permiso.'});const preferences={provider_id:provider.id,whatsapp_phone:request.body.whatsappPhone||null,whatsapp_opt_in:Boolean(request.body.whatsappOptIn),whatsapp_opt_in_at:request.body.whatsappOptIn?new Date().toISOString():null,whatsapp_opt_in_source:request.body.whatsappOptInSource||null,updated_at:new Date().toISOString()};dossier(provider.id).contactPreferences=preferences;response.json({contactPreferences:preferences})});
 memoryRouter.post('/providers/:id/documents',requireUser,async(request,response)=>{const user=response.locals.user as SessionUser,provider=providers.find(item=>item.id===request.params.id);if(!provider)return response.status(404).json({error:'Proveedor no encontrado.'});if(!canSeeProvider(user,provider))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});try{const saved=await storeLocalDocument(provider.id,String(request.body.originalName||''),String(request.body.contentBase64||''));const document={id:randomUUID(),category:String(request.body.category||''),original_name:String(request.body.originalName||''),mime_type:String(request.body.mimeType||'application/octet-stream'),byte_size:saved.byteSize,storage_driver:saved.storageDriver,storage_key:saved.storageKey,created_at:new Date().toISOString()};dossier(provider.id).documents.unshift(document);response.status(201).json({document})}catch(error){response.status(422).json({error:error instanceof Error?error.message:'No se pudo registrar el documento.'})}});
@@ -186,7 +317,7 @@ memoryRouter.patch('/users/:userId/companies',requireUser,(request,response)=>{
  if(activeAssigned)return response.status(409).json({error:`No se puede quitar esa empresa: la ejecutiva conserva ${activeAssigned} proveedor(es) asignado(s). Reasígnalos o retíralos primero.`});
  target.empresaIds=[...empresaIds];const {passwordHash:_,...safe}=target;response.json({user:safe});
 });
-memoryRouter.get('/reports/dashboard',requireUser,(request,response)=>{const user=response.locals.user as SessionUser,processId=String(request.query.processId||''),items=providers.filter(item=>item.procesoId===processId&&canSeeProvider(user,item)),certificates=items.flatMap(item=>dossier(item.id).certificates);const today='2026-09-03',limit='2026-10-18';const sub=(name:string)=>items.filter(item=>item.flujo?.subestado===name).length;response.json({total:items.length,homologados:sub('VIGENTE'),inscritos:items.filter(item=>item.flujo?.estado==='INSCRITO').length,pendientes:items.filter(item=>item.flujo?.estado==='PENDIENTE_INSCRIPCION').length,sin_respuesta:['NO_RESPONDE','NO_UBICADO','NO_UBICADO_VISITA'].reduce((sum,name)=>sum+sub(name),0),no_participan:sub('NO_PARTICIPA'),datos_incompletos:sub('DATOS_INCOMPLETOS'),desestimados:sub('DESESTIMADO')+sub('VISITA_DESESTIMADA'),no_son_proveedores:sub('NO_ES_PROVEEDOR'),por_vencer:certificates.filter(item=>String(item.expires_on)>=today&&String(item.expires_on)<=limit).length,vencidos:certificates.filter(item=>String(item.expires_on)<today).length})});
+memoryRouter.get('/reports/dashboard',requireUser,(request,response)=>{const user=response.locals.user as SessionUser,processId=String(request.query.processId||''),items=providers.filter(item=>item.procesoId===processId&&canSeeProvider(user,item)),certificates=items.flatMap(item=>dossier(item.id).certificates);const today=new Date().toISOString().slice(0,10),limit=new Date(Date.now()+45*86_400_000).toISOString().slice(0,10);const sub=(name:string)=>items.filter(item=>item.flujo?.subestado===name).length;response.json({total:items.length,homologados:sub('VIGENTE'),inscritos:items.filter(item=>item.flujo?.estado==='INSCRITO').length,pendientes:items.filter(item=>item.flujo?.estado==='PENDIENTE_INSCRIPCION').length,sin_respuesta:['NO_RESPONDE','NO_UBICADO','NO_UBICADO_VISITA'].reduce((sum,name)=>sum+sub(name),0),no_participan:sub('NO_PARTICIPA'),datos_incompletos:sub('DATOS_INCOMPLETOS'),desestimados:sub('DESESTIMADO')+sub('VISITA_DESESTIMADA'),no_son_proveedores:sub('NO_ES_PROVEEDOR'),por_vencer:certificates.filter(item=>String(item.expires_on)>=today&&String(item.expires_on)<=limit).length,vencidos:certificates.filter(item=>String(item.expires_on)<today).length})});
 memoryRouter.get('/reports/status',requireUser,(request,response)=>{
  const user=response.locals.user as SessionUser,processId=String(request.query.processId||''),process=processes.find(item=>item.id===processId);
  if(!process)return response.status(404).json({error:'Proceso no encontrado.'});
@@ -195,7 +326,7 @@ memoryRouter.get('/reports/status',requireUser,(request,response)=>{
   const records=dossier(provider.id),certificate=records.certificates[0],attributes=provider.atributos||{};
   const daysToExpiry=certificate?.expires_on ? Math.floor((new Date(String(certificate.expires_on)).getTime()-new Date().getTime())/86_400_000) : null;
   const modules=Array.isArray(certificate?.modules)?certificate.modules.map((item:unknown)=>typeof item==='object'&&item?String((item as Record<string,unknown>).nombre||(item as Record<string,unknown>).name||''):String(item)).filter(Boolean).join(', '):'';
-  return {id:provider.id,ruc:provider.ruc,razonSocial:provider.razonSocial,tipoDocumento:String(certificate?.document_type||records.documents[0]?.category||''),filtro1:String(attributes.filtro_1||''),filtro2:String(attributes.filtro_2||''),estado:String(provider.flujo?.estado||''),subestado:String(provider.flujo?.subestado||''),dictamen:String(certificate?.opinion||''),puntajeFinalPonderado:certificate?.score===undefined||certificate?.score===null?null:Number(certificate.score),fechaEmision:certificate?.issued_on||null,fechaVencimiento:certificate?.expires_on||null,diasPorVencer:Number.isFinite(daysToExpiry)?daysToExpiry:null,entregables:records.documents.map(item=>item.original_name).concat(certificate?.document_type?[String(certificate.document_type)]:[]).join(', '),modulos:modules,documentosEntregables:records.documents.map(item=>({id:String(item.id),originalName:String(item.original_name),mimeType:String(item.mime_type),byteSize:Number(item.byte_size||0)}) )};
+  return {id:provider.id,ruc:provider.ruc,razonSocial:provider.razonSocial,tipoDocumento:String(certificate?.document_type||''),filtro1:String(attributes.filtro_1||''),filtro2:String(attributes.filtro_2||''),estado:String(provider.flujo?.estado||''),subestado:String(provider.flujo?.subestado||''),dictamen:String(certificate?.opinion||''),puntajeFinalPonderado:certificate?.score===undefined||certificate?.score===null?null:Number(certificate.score),fechaEmision:certificate?.issued_on||null,fechaVencimiento:certificate?.expires_on||null,diasPorVencer:Number.isFinite(daysToExpiry)?daysToExpiry:null,entregables:records.documents.map(item=>item.original_name).concat(certificate?.document_type?[String(certificate.document_type)]:[]).join(', '),modulos:modules,documentosEntregables:records.documents.map(item=>({id:String(item.id),originalName:String(item.original_name),mimeType:String(item.mime_type),byteSize:Number(item.byte_size||0)}) )};
  });
  response.json({rows});
 });
@@ -252,4 +383,4 @@ memoryRouter.get('/reports/productivity',requireUser,(request,response)=>{
 memoryRouter.get('/cron/certificates',(request,response)=>{if(!config.cronSecret)return response.status(503).json({error:'CRON_SECRET no está configurado.'});if(request.get('authorization')!==`Bearer ${config.cronSecret}`)return response.status(401).json({error:'Cron no autorizado.'});let porVencer=0,vencidos=0;for(const provider of providers){const state=memoryState(provider),transition=expiryTransition(state.substatus,provider.vigencia==='N/A'?null:provider.vigencia,new Date());if(!transition)continue;const validation=validateTransition(state,transition,'sistema',{});if(!validation.ok)continue;const to=validation.transition.to;workflowHistory.set(provider.id,[{id:randomUUID(),transition_code:transition,from_step:state.step,from_status:state.status,from_substatus:state.substatus,to_step:to.step,to_status:to.status,to_substatus:to.substatus,actor_user_id:null,actor_role:'sistema',reason:'Actualización automática de vigencia.',metadata:{},created_at:new Date().toISOString()},...(workflowHistory.get(provider.id)||[])]);provider.flujo={paso:to.step,estado:to.status,subestado:to.substatus,version:provider.flujo.version+1};provider.estado=legacyProviderStatus(to);memoryRecords(provider,transition,{}, {id:'sistema',name:'Sistema',email:'',role:'supervisor_general',empresaIds:[]});if(transition==='MARCAR_VENCIDO')vencidos+=1;else porVencer+=1;}response.json({ok:true,porVencer,vencidos})});
 
 function memoryState(provider:Record<string,any>):WorkflowState{return {step:provider.flujo.paso,status:provider.flujo.estado,substatus:provider.flujo.subestado}}
-function memoryTransitions(provider:Record<string,any>,user:SessionUser){return availableTransitions(memoryState(provider),user.role).map(item=>({codigo:item.code,etiqueta:item.label,datosObligatorios:[...(item.requiredFields||[])]}))}
+function memoryTransitions(provider:Record<string,any>,user:SessionUser){return availableTransitions(memoryState(provider),user.role).map(item=>({codigo:item.code,etiqueta:item.label,datosObligatorios:[...(item.requiredFields||[])],estadoDestino:item.to.status,subestadoDestino:item.to.substatus}))}

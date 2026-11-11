@@ -8,7 +8,7 @@ import { mapProvider } from '../mappers.js';
 import type { AuthenticatedRequest, SessionUser } from '../types.js';
 import { validateBody } from '../validation.js';
 import {
- availableTransitions, legacyProviderStatus, transitionCodes, validateTransition,
+ availableTransitions, legacyProviderStatus, statusCatalog, transitionCodes, validateTransition,
  type WorkflowState, type WorkflowTransitionCode,
 } from '../workflow.js';
 import { confirmDocumentUpload, createDocumentUpload, readDocument, storeDocument } from '../document-storage.js';
@@ -45,7 +45,7 @@ function workflowStateFromRow(row:Record<string,unknown>):WorkflowState {
  return {step:Number(row.current_step) as WorkflowState['step'],status:row.workflow_status as WorkflowState['status'],substatus:row.workflow_substatus as WorkflowState['substatus']};
 }
 function publicTransition(transition:ReturnType<typeof availableTransitions>[number]){
- return {codigo:transition.code,etiqueta:transition.label,datosObligatorios:[...(transition.requiredFields||[])]};
+ return {codigo:transition.code,etiqueta:transition.label,datosObligatorios:[...(transition.requiredFields||[])],estadoDestino:transition.to.status,subestadoDestino:transition.to.substatus};
 }
 
 const createSchema=z.object({id:z.string().optional(),empresaId:z.string().min(1),procesoId:z.string().min(1),razonSocial:z.string().min(2).max(180),ruc:z.string().regex(/^\d{11}$/),personaContacto:z.string().min(2).max(120),telefonos:z.string().min(6).max(80),email:z.string().email(),direccion:z.string().min(3).max(240),departamento:z.string().min(2).max(80),distrito:z.string().min(2).max(80),actividadPrincipal:z.string().min(2).max(240),atributos:z.record(z.string().min(1).max(80),z.string().trim().max(180)).default({})});
@@ -138,7 +138,7 @@ providersRouter.get('/:id/workflow',async(request,response)=>{
  if(!await canAccessProvider(user,row))return response.status(403).json({error:'Proveedor fuera de tu alcance.'});
  const history=await pool.query(`SELECT id,transition_code,from_step,from_status,from_substatus,to_step,to_status,to_substatus,actor_user_id,actor_role,reason,metadata,created_at FROM provider_status_history WHERE provider_id=$1 ORDER BY created_at DESC`,[request.params.id]);
  const state=workflowStateFromRow(row);
- response.json({provider:mapProvider(row),transicionesDisponibles:availableTransitions(state,user.role).map(publicTransition),historial:history.rows});
+ response.json({provider:mapProvider(row),transicionesDisponibles:availableTransitions(state,user.role).map(publicTransition),catalogoEstados:statusCatalog,historial:history.rows});
 });
 
 providersRouter.get('/:id/dossier',async(request,response)=>{

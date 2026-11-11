@@ -14,8 +14,9 @@ describe('mi cartera de ejecutiva en modo local', () => {
     const response = await executive.get('/api/providers/my-portfolio').query({ processId: 'proc-decal-2026' });
 
     expect(response.status).toBe(200);
-    expect(response.body.summary.total).toBe(1);
-    expect(response.body.providers).toEqual([expect.objectContaining({ id: 'p-001', razonSocial: 'Soluciones A&F SAC' })]);
+    expect(response.body.summary.total).toBe(10);
+    expect(response.body.providers).toHaveLength(10);
+    expect(response.body.providers).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'p-001', razonSocial: 'Soluciones A&F SAC' })]));
 
     const client = await login('cliente@decal.com', 'Cliente123');
     expect((await client.get('/api/providers/my-portfolio').query({ processId: 'proc-decal-2026' })).status).toBe(403);

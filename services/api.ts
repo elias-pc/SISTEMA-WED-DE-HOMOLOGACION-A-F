@@ -1,4 +1,4 @@
-import type { AuthUser, DashboardResumen, Empresa, EstadoSeguimiento, ExpedienteProveedor, HistorialFlujo, ImportPreview, ProcesoHomologacion, Proveedor, ReporteEstadoProveedores, ReporteOperativo, ReporteProductividad, ResumenCartera, ResumenMiCartera, ResultadoAsignacion, TipoReporteOperativo, TransicionDisponible } from '../types';
+import type { AuthUser, CatalogoEstadoGrupo, DashboardResumen, Empresa, EstadoSeguimiento, ExpedienteProveedor, HistorialFlujo, ImportPreview, ProcesoHomologacion, Proveedor, ReporteEstadoProveedores, ReporteOperativo, ReporteProductividad, ResumenCartera, ResumenMiCartera, ResultadoAsignacion, TipoReporteOperativo, TransicionDisponible } from '../types';
 
 export class ApiError extends Error { constructor(message:string,public status:number){super(message)} }
 async function request<T>(path:string,options:RequestInit={}):Promise<T>{
@@ -20,7 +20,7 @@ export const api={
   providerWorkflow:(id:string)=>request<{provider:Proveedor;transicionesDisponibles:TransicionDisponible[];historial:unknown[]}>(`/providers/${encodeURIComponent(id)}/workflow`),
   applyProviderTransition:(id:string,payload:{transicion:string;datos?:Record<string,unknown>;motivo?:string;version?:number})=>request<{provider:Proveedor;transicionesDisponibles:TransicionDisponible[]}>(`/providers/${encodeURIComponent(id)}/transitions`,{method:'POST',body:JSON.stringify(payload)}),
   providerDossier:(id:string)=>request<ExpedienteProveedor>(`/providers/${encodeURIComponent(id)}/dossier`),
-  providerWorkflowDetail:(id:string)=>request<{provider:Proveedor;transicionesDisponibles:TransicionDisponible[];historial:HistorialFlujo[]}>(`/providers/${encodeURIComponent(id)}/workflow`),
+  providerWorkflowDetail:(id:string)=>request<{provider:Proveedor;transicionesDisponibles:TransicionDisponible[];catalogoEstados?:CatalogoEstadoGrupo[];historial:HistorialFlujo[]}>(`/providers/${encodeURIComponent(id)}/workflow`),
   providerDocument:(id:string,payload:{category:string;originalName:string;mimeType:string;contentBase64:string;expiresOn?:string})=>request<{document:ExpedienteProveedor['documents'][number]}>(`/providers/${encodeURIComponent(id)}/documents`,{method:'POST',body:JSON.stringify(payload)}),
   prepareProviderDocument:(id:string,payload:{category:string;originalName:string;mimeType:string;byteSize:number;expiresOn?:string})=>request<{mode:'server'}|{mode:'neon-s3';documentId:string;storageKey:string;storageDriver:'neon-s3';upload:{url:string;fields:Record<string,string>}}>(`/providers/${encodeURIComponent(id)}/documents/upload-url`,{method:'POST',body:JSON.stringify(payload)}),
   completeProviderDocument:(id:string,payload:{category:string;originalName:string;mimeType:string;documentId:string;storageKey:string;expiresOn?:string})=>request<{document:ExpedienteProveedor['documents'][number]}>(`/providers/${encodeURIComponent(id)}/documents/complete`,{method:'POST',body:JSON.stringify(payload)}),
