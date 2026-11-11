@@ -105,7 +105,7 @@ main > header .secondary-text {
   top: 0;
   z-index: 60;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 1.5rem;
   padding: 1rem 1.35rem;
@@ -565,7 +565,8 @@ main { padding-top: 0.75rem; }
 
 @media (max-width: 520px) {
   .app-header { grid-template-columns: 1fr; }
-  .user-menu { justify-content: space-between; }
+  .user-menu { justify-content: space-between; flex-wrap: wrap; }
+  .user-menu .tenant-bar-compact { flex-direction: row; width: 100%; }
   .user-copy strong { max-width: 190px; }
   .status-metrics { grid-template-columns: 1fr; }
   .provider-progress-row { grid-template-columns: 1fr; }
