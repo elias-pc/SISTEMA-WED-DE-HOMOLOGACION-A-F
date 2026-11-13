@@ -10,7 +10,6 @@ interface Props {
 function ProveedoresTable({ proveedores, filterLabels, showAction, onSelect }: Props) {
   const visibleFilters = filterLabels.length ? filterLabels : ['Filtro'];
   const headers = ['Nro', 'RUC', 'Razón Social', 'Contacto', 'Teléfonos', 'E-Mail', 'Dirección', 'Departamento', ...visibleFilters];
-  if (showAction) headers.push('Acción');
 
   return (
     <div style={{ overflowX: 'auto', marginTop: '1.5rem' }}>
@@ -27,14 +26,13 @@ function ProveedoresTable({ proveedores, filterLabels, showAction, onSelect }: P
               <tr key={proveedor.id} style={{ borderTop: '1px solid var(--color-border)' }}>
                 <td style={{ padding: '1rem 0.75rem' }}>{index + 1}</td>
                 <td style={{ padding: '1rem 0.75rem' }}>{proveedor.ruc}</td>
-                <td style={{ padding: '1rem 0.75rem' }}>{proveedor.razonSocial}</td>
+                <td style={{ padding: '1rem 0.75rem' }}>{showAction ? <button type="button" aria-label={`Abrir expediente de ${proveedor.razonSocial}`} title="Abrir expediente" onClick={() => onSelect(proveedor)} style={{ padding: 0, border: 0, background: 'none', color: '#172d48', font: 'inherit', fontWeight: 700, textAlign: 'left', textDecoration: 'underline', textUnderlineOffset: '2px', cursor: 'pointer' }}>{proveedor.razonSocial}</button> : proveedor.razonSocial}</td>
                 <td style={{ padding: '1rem 0.75rem' }}>{proveedor.personaContacto}</td>
                 <td style={{ padding: '1rem 0.75rem' }}>{proveedor.telefonos}</td>
                 <td style={{ padding: '1rem 0.75rem' }}>{proveedor.email}</td>
                 <td style={{ padding: '1rem 0.75rem' }}>{proveedor.direccion || '—'}</td>
                 <td style={{ padding: '1rem 0.75rem' }}>{proveedor.departamento || '—'}</td>
                 {visibleFilters.map((_, filterIndex) => <td key={`filter-${filterIndex}`} style={{ padding: '1rem 0.75rem' }}>{proveedor.atributos?.[`filtro_${filterIndex + 1}`] || '—'}</td>)}
-                {showAction ? <td style={{ padding: '1rem 0.75rem' }}><button type="button" className="btn-secondary table-action" aria-label={`Abrir expediente de ${proveedor.razonSocial}`} onClick={() => onSelect(proveedor)}>Abrir expediente</button></td> : null}
               </tr>
           ))}
         </tbody>
