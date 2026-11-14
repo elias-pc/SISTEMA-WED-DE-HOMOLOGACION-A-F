@@ -41,7 +41,12 @@ function neonBucket() {
 }
 
 function neonS3() {
-  const { AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_ENDPOINT_URL_S3, AWS_REGION } = process.env;
+  // Vercel reserva los nombres AWS_* en sus funciones: se usan NEON_S3_* y, si no existen, los AWS_* estándar.
+  const env = process.env;
+  const AWS_ACCESS_KEY_ID = env.NEON_S3_ACCESS_KEY_ID || env.AWS_ACCESS_KEY_ID;
+  const AWS_SECRET_ACCESS_KEY = env.NEON_S3_SECRET_ACCESS_KEY || env.AWS_SECRET_ACCESS_KEY;
+  const AWS_ENDPOINT_URL_S3 = env.NEON_S3_ENDPOINT || env.AWS_ENDPOINT_URL_S3;
+  const AWS_REGION = env.NEON_S3_REGION || env.AWS_REGION;
   if (!AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !AWS_ENDPOINT_URL_S3 || !AWS_REGION) {
     throw new Error('Faltan las credenciales de Neon Object Storage.');
   }
