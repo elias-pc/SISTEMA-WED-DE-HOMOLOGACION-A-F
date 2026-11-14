@@ -291,7 +291,7 @@ main { padding-top: 0.75rem; }
 .workbench { margin-top: 1.5rem; }
 .workbench h3, .workbench h4 { margin-top: 0; }
 .workbench-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 1.25rem; }
-.workbench-grid > section { padding: 1rem; border: 1px solid var(--color-border); border-radius: .8rem; background: #fafbfd; }
+.workbench-grid > section { min-width: 0; padding: 1rem; border: 1px solid var(--color-border); border-radius: .8rem; background: #fafbfd; }
 .transition-list { display: grid; gap: .55rem; }
 .transition-list .btn-secondary { color: var(--color-text); border-color: var(--color-border); text-align: left; }
 .transition-form { display: grid; gap: .7rem; margin-top: 1rem; }

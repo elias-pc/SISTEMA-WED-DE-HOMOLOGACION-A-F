@@ -60,6 +60,13 @@ function ProviderWorkbench({ provider, companyId, configuration, onChanged, onCl
     setUsers(needsAssignee ? (await api.users(companyId)).users : []);
   };
 
+  useEffect(() => {
+    const closeWithEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', closeWithEscape);
+    return () => { document.removeEventListener('keydown', closeWithEscape); document.body.style.overflow = previousOverflow; };
+  }, [onClose]);
   useEffect(() => { void load().catch((error) => setMessage(error instanceof Error ? error.message : 'No se pudo cargar el expediente.')); }, [provider.id, companyId]);
 
   const selectedUsers = useMemo(() => ({
@@ -133,8 +140,9 @@ function ProviderWorkbench({ provider, companyId, configuration, onChanged, onCl
   };
 
   return (
-    <section className="card workbench" aria-label={`Expediente de ${provider.razonSocial}`}>
-      <div className="section-heading"><div><p className="context-label">Expediente operativo</p><h3>{provider.razonSocial}</h3><p className="secondary-text">RUC {provider.ruc} · Paso {workflow?.provider.flujo?.paso ?? provider.flujo?.paso ?? '—'} · {workflow?.provider.flujo?.subestado ?? provider.flujo?.subestado ?? 'Sin estado'}</p></div><button className="btn-secondary" type="button" onClick={onClose}>Cerrar</button></div>
+    <div className="deliverables-modal-backdrop" role="presentation" onMouseDown={onClose}>
+    <section className="card workbench" role="dialog" aria-modal="true" aria-label={`Expediente de ${provider.razonSocial}`} onMouseDown={(event) => event.stopPropagation()} style={{ width: 'min(1180px, 100%)', maxHeight: 'calc(100vh - 2rem)', margin: 0, overflowY: 'auto', overflowX: 'hidden', boxSizing: 'border-box' }}>
+      <div className="section-heading" style={{ position: 'sticky', top: '-1.5rem', zIndex: 2, margin: '-1.5rem -1.5rem 0', padding: '1.25rem 1.5rem 1rem', background: '#fff', borderBottom: '1px solid var(--color-border)' }}><div><p className="context-label">Expediente operativo</p><h3>{provider.razonSocial}</h3><p className="secondary-text">RUC {provider.ruc} · Paso {workflow?.provider.flujo?.paso ?? provider.flujo?.paso ?? '—'} · {workflow?.provider.flujo?.subestado ?? provider.flujo?.subestado ?? 'Sin estado'}</p></div><button className="btn-secondary" type="button" onClick={onClose}>Cerrar</button></div>
       {message ? <p className={message.includes('No se pudo') ? 'form-error' : 'success-message'} role="status">{message}</p> : null}
       <div className="workbench-grid">
         <section><h4>Acciones disponibles</h4><div className="transition-list">{workflow?.transicionesDisponibles.length ? workflow.transicionesDisponibles.map((transition) => <button key={transition.codigo} type="button" className="btn-secondary" onClick={() => pickTransition(transition)}>{transition.etiqueta}</button>) : <p className="secondary-text">No tienes transiciones disponibles en este estado.</p>}</div>
@@ -145,6 +153,7 @@ function ProviderWorkbench({ provider, companyId, configuration, onChanged, onCl
       </div>
       <details className="history-panel"><summary>Ver trazabilidad ({workflow?.historial.length || 0} cambios)</summary><div className="timeline">{workflow?.historial.map((item) => <p key={item.id}><strong>{item.transition_code.split('_').join(' ')}</strong> · {item.to_substatus.split('_').join(' ')} · {new Date(item.created_at).toLocaleString('es-PE')}</p>)}</div></details>
     </section>
+    </div>
   );
 }
 
