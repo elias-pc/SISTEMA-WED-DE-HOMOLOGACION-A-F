@@ -99,7 +99,7 @@ function ProveedoresPage() {
 
         {message ? <p className="success-message" role="status">{message}</p> : null}
         {importPreview ? <section className="import-preview"><h3>Vista previa: {importFile?.name}</h3><p><strong>{importPreview.summary.readyRows}</strong> filas listas · <strong>{importPreview.summary.rejectedRows}</strong> rechazadas de {importPreview.summary.totalRows}.</p>{importPreview.summary.readyRows ? <button type="button" className="btn-primary" onClick={confirmImport} disabled={importBusy}>Confirmar importación</button> : null}<ul>{importPreview.rows.filter((row) => row.errors.length).slice(0, 8).map((row) => <li key={row.rowNumber}>Fila {row.rowNumber}: {row.errors.join(' ')}</li>)}</ul></section> : null}
-        <ProveedoresTable proveedores={proveedoresFiltrados} filterLabels={selectedEmpresa?.configuracionHomologacion.filters || []} showAction={canOpenProviderWorkbench} onSelect={setSelectedProvider} />
+        <ProveedoresTable proveedores={proveedoresFiltrados} filterLabels={selectedEmpresa?.configuracionHomologacion.filters || []} onSelect={canOpenProviderWorkbench ? setSelectedProvider : undefined} />
       </section>
       {canOpenProviderWorkbench && selectedProvider && selectedEmpresa ? <ProviderWorkbench provider={selectedProvider} companyId={selectedEmpresa.id} configuration={selectedEmpresa.configuracionHomologacion} onChanged={(provider) => { replaceProveedor(provider); setSelectedProvider(provider); }} onClose={() => setSelectedProvider(null)} /> : null}
     </div>

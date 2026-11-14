@@ -9,10 +9,10 @@ const row: EstadoProveedorReporte = {
   entregables: 'Informe.pdf', modulos: 'Formalidad y legales', documentosEntregables: [{ id: 'doc-1', originalName: 'Informe.pdf', mimeType: 'application/pdf', byteSize: 1024 }],
 };
 
-describe('tabla y Excel de estatus', () => {
-  it('incluye los filtros configurables y los módulos de evaluación', () => {
+describe('tabla y Excel de status', () => {
+  it('incluye el filtro configurable y los módulos de evaluación', () => {
     expect(statusColumns.map((column) => column.label)).toEqual([
-      'Nro', 'RUC', 'Razón Social', 'Tipo de Documento', 'Filtro 1', 'Filtro 2', 'Status', 'Sub-Status', 'Dictamen',
+      'Nro', 'RUC', 'Razón Social', 'Tipo de Documento', 'Filtro', 'Status', 'Sub-Status', 'Dictamen',
       'Puntaje Final Ponderado', 'Fecha de Emisión', 'Fecha de Vcto.', 'Días por Vencer', 'Entregables', 'Módulos',
     ]);
   });
@@ -33,9 +33,9 @@ describe('tabla y Excel de estatus', () => {
 
   it('genera todas las columnas al seleccionar cada opción', () => {
     const result = buildStatusExportMatrix([row], optionalStatusColumnKeys);
-    expect(result.columns).toHaveLength(15);
+    expect(result.columns).toHaveLength(14);
     expect(result.matrix[0]).toEqual(statusColumns.map((column) => column.label));
-    expect(result.matrix[1]).toHaveLength(15);
+    expect(result.matrix[1]).toHaveLength(14);
     expect(result.matrix[1].slice(0, 3)).toEqual([1, '20501234567', 'Proveedor de prueba']);
   });
 
@@ -44,7 +44,7 @@ describe('tabla y Excel de estatus', () => {
     const { bytes, columnCount } = await buildStatusWorkbookBytes([row], selected);
     const XLSX = await import('xlsx');
     const workbook = XLSX.read(bytes, { type: 'array', cellDates: true });
-    const worksheet = workbook.Sheets['Estatus de proveedores'];
+    const worksheet = workbook.Sheets['Status de proveedores'];
     const values = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, raw: false });
     expect(columnCount).toBe(6);
     expect(values[0]).toEqual(['Nro', 'RUC', 'Razón Social', 'Tipo de Documento', 'Status', 'Entregables']);

@@ -27,10 +27,12 @@
 - API: `server/routes/providers.ts`
 - Persistencia de expediente: `server/provider-records.ts`
 
-## Estatus de proveedores
+## Status de proveedores
 - Interfaz: `components/homologaciones/ProviderStatusTable.tsx`
+- Ventana flotante de cambio de Status/Sub-Status: `components/homologaciones/StatusChangePopover.tsx` (consume `GET /providers/:id/workflow` y `POST /providers/:id/transitions`)
 - Columnas y Excel: `services/statusTable.ts`
-- API: `server/routes/reports.ts`
+- API de la tabla: `server/routes/reports.ts` (`/status`)
+- Catálogo de Status/Sub-Status y motor de transiciones: `server/workflow.ts` (`statusCatalog`, `workflowTransitions`)
 
 ## Reportes operativos
 - Interfaz: `app/reportes/ReportesPage.tsx`

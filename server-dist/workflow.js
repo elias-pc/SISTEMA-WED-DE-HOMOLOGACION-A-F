@@ -17,7 +17,7 @@ export const initialProviderWorkflowState = {
 export const transitionCodes = [
     'ASIGNAR_EJECUTIVA', 'INICIAR_COORDINACION', 'MARCAR_DATOS_INCOMPLETOS', 'MARCAR_NO_ES_PROVEEDOR',
     'MARCAR_NO_UBICADO', 'MARCAR_NO_RESPONDE', 'DESESTIMAR_INSCRIPCION', 'MARCAR_NO_PARTICIPA',
-    'REGISTRAR_CERTIFICADO_EXISTENTE', 'REGISTRAR_PAGO', 'ENVIAR_FORMULARIO', 'RECIBIR_FORMULARIO',
+    'REGISTRAR_CERTIFICADO_EXISTENTE', 'REGISTRAR_PAGO', 'CONFIRMAR_PARTICIPACION', 'ENVIAR_FORMULARIO', 'RECIBIR_FORMULARIO',
     'ASIGNAR_INSPECTOR', 'PROGRAMAR_VISITA', 'REPROGRAMAR_VISITA', 'MARCAR_NO_UBICADO_VISITA',
     'DESESTIMAR_VISITA', 'RETOMAR_VISITA', 'REGISTRAR_VISITA', 'CONFIRMAR_CONFORMIDAD',
     'EMITIR_ENTREGABLE', 'INICIAR_OBSERVACIONES', 'CERRAR_OBSERVACIONES', 'MARCAR_POR_VENCER', 'MARCAR_VENCIDO',
@@ -25,17 +25,19 @@ export const transitionCodes = [
 const retryableEnrollmentOutcomes = [
     'DATOS_INCOMPLETOS', 'NO_UBICADO', 'NO_RESPONDE', 'NO_PARTICIPA',
 ];
+const activeEnrollmentSubstatuses = ['EN_COORDINACION', 'CONFIRMARON_PARTICIPACION'];
 export const workflowTransitions = [
     { code: 'ASIGNAR_EJECUTIVA', label: 'Asignar ejecutiva', from: ['REGISTRADO'], to: { step: 3, status: 'PENDIENTE_INSCRIPCION', substatus: 'ASIGNADO_EJECUTIVA' }, roles: ['administradora'], requiredFields: ['ejecutivaId'] },
     { code: 'INICIAR_COORDINACION', label: 'Iniciar o retomar coordinación', from: ['ASIGNADO_EJECUTIVA', ...retryableEnrollmentOutcomes], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'EN_COORDINACION' }, roles: ['ejecutiva'] },
-    { code: 'MARCAR_DATOS_INCOMPLETOS', label: 'Marcar datos incompletos', from: ['EN_COORDINACION'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'DATOS_INCOMPLETOS' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
-    { code: 'MARCAR_NO_ES_PROVEEDOR', label: 'Marcar que no es proveedor', from: ['EN_COORDINACION'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_ES_PROVEEDOR' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
-    { code: 'MARCAR_NO_UBICADO', label: 'Marcar no ubicado', from: ['EN_COORDINACION'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_UBICADO' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
-    { code: 'MARCAR_NO_RESPONDE', label: 'Marcar que no responde', from: ['EN_COORDINACION'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_RESPONDE' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
-    { code: 'DESESTIMAR_INSCRIPCION', label: 'Desestimar inscripción', from: ['EN_COORDINACION'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'DESESTIMADO' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
-    { code: 'MARCAR_NO_PARTICIPA', label: 'Marcar que no participa', from: ['EN_COORDINACION'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_PARTICIPA' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
-    { code: 'REGISTRAR_CERTIFICADO_EXISTENTE', label: 'Registrar certificado existente', from: ['EN_COORDINACION'], to: { step: 9, status: 'HOMOLOGADO', substatus: 'VIGENTE' }, roles: ['ejecutiva'], requiredFields: ['tipoDocumento', 'fechaEmision', 'fechaVencimiento'] },
-    { code: 'REGISTRAR_PAGO', label: 'Registrar pago', from: ['EN_COORDINACION'], to: { step: 5, status: 'INSCRITO', substatus: 'PAGO_CONFIRMADO' }, roles: ['ejecutiva'], requiredFields: ['banco', 'monto', 'modalidad', 'fechaPago', 'numeroOperacion', 'numeroFactura'] },
+    { code: 'CONFIRMAR_PARTICIPACION', label: 'Confirmaron participación', from: ['EN_COORDINACION'], to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'CONFIRMARON_PARTICIPACION' }, roles: ['ejecutiva'] },
+    { code: 'MARCAR_DATOS_INCOMPLETOS', label: 'Marcar datos incompletos', from: activeEnrollmentSubstatuses, to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'DATOS_INCOMPLETOS' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
+    { code: 'MARCAR_NO_ES_PROVEEDOR', label: 'Marcar que no es proveedor', from: activeEnrollmentSubstatuses, to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_ES_PROVEEDOR' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
+    { code: 'MARCAR_NO_UBICADO', label: 'Marcar no ubicado', from: activeEnrollmentSubstatuses, to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_UBICADO' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
+    { code: 'MARCAR_NO_RESPONDE', label: 'Marcar que no responde', from: activeEnrollmentSubstatuses, to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_RESPONDE' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
+    { code: 'DESESTIMAR_INSCRIPCION', label: 'Desestimar inscripción', from: activeEnrollmentSubstatuses, to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'DESESTIMADO' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
+    { code: 'MARCAR_NO_PARTICIPA', label: 'Marcar que no participa', from: activeEnrollmentSubstatuses, to: { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_PARTICIPA' }, roles: ['ejecutiva'], requiredFields: ['motivo'] },
+    { code: 'REGISTRAR_CERTIFICADO_EXISTENTE', label: 'Registrar certificado existente', from: activeEnrollmentSubstatuses, to: { step: 9, status: 'HOMOLOGADO', substatus: 'VIGENTE' }, roles: ['ejecutiva'], requiredFields: ['tipoDocumento', 'fechaEmision', 'fechaVencimiento'] },
+    { code: 'REGISTRAR_PAGO', label: 'Registrar pago', from: activeEnrollmentSubstatuses, to: { step: 5, status: 'INSCRITO', substatus: 'PAGO_CONFIRMADO' }, roles: ['ejecutiva'], requiredFields: ['banco', 'monto', 'modalidad', 'fechaPago', 'numeroOperacion', 'numeroFactura'] },
     { code: 'ENVIAR_FORMULARIO', label: 'Enviar formulario', from: ['PAGO_CONFIRMADO'], to: { step: 5, status: 'INSCRITO', substatus: 'FORMULARIO_ENVIADO' }, roles: ['ejecutiva'], requiredFields: ['formulario'] },
     { code: 'RECIBIR_FORMULARIO', label: 'Registrar devolución del formulario', from: ['FORMULARIO_ENVIADO'], to: { step: 6, status: 'INSCRITO', substatus: 'FORMULARIO_DEVUELTO' }, roles: ['ejecutiva'], requiredFields: ['documentosConformes'] },
     { code: 'ASIGNAR_INSPECTOR', label: 'Asignar inspector', from: ['FORMULARIO_DEVUELTO'], to: { step: 7, status: 'INSCRITO', substatus: 'INSPECTOR_ASIGNADO' }, roles: ['jefe_inspecciones'], requiredFields: ['inspectorId'] },
@@ -52,12 +54,50 @@ export const workflowTransitions = [
     { code: 'MARCAR_POR_VENCER', label: 'Marcar por vencer', from: ['VIGENTE'], to: { step: 9, status: 'HOMOLOGADO', substatus: 'POR_VENCER' }, roles: ['sistema'] },
     { code: 'MARCAR_VENCIDO', label: 'Marcar vencido', from: ['VIGENTE', 'POR_VENCER'], to: { step: 9, status: 'HOMOLOGADO', substatus: 'VENCIDO' }, roles: ['sistema'] },
 ];
+/** Catálogo de Status y Sub-Status definido en el proceso operativo del cliente. */
+export const statusCatalog = [
+    {
+        status: 'PENDIENTE_INSCRIPCION', label: 'Pendiente de inscripción', substatuses: [
+            { label: 'En coordinación', substatus: 'EN_COORDINACION', transitionCodes: ['INICIAR_COORDINACION'] },
+            { label: 'Confirmaron participación', substatus: 'CONFIRMARON_PARTICIPACION', transitionCodes: ['CONFIRMAR_PARTICIPACION'] },
+            { label: 'Cuentan con certificados', substatus: 'CERTIFICADO_EXISTENTE', transitionCodes: ['REGISTRAR_CERTIFICADO_EXISTENTE'] },
+            { label: 'Datos no corresponden', substatus: 'DATOS_INCOMPLETOS', transitionCodes: ['MARCAR_DATOS_INCOMPLETOS'] },
+            { label: 'No son proveedores', substatus: 'NO_ES_PROVEEDOR', transitionCodes: ['MARCAR_NO_ES_PROVEEDOR'] },
+            { label: 'No ubicados', substatus: 'NO_UBICADO', transitionCodes: ['MARCAR_NO_UBICADO'] },
+            { label: 'No responden', substatus: 'NO_RESPONDE', transitionCodes: ['MARCAR_NO_RESPONDE'] },
+            { label: 'Desestimado', substatus: 'DESESTIMADO', transitionCodes: ['DESESTIMAR_INSCRIPCION'] },
+            { label: 'No participan', substatus: 'NO_PARTICIPA', transitionCodes: ['MARCAR_NO_PARTICIPA'] },
+            { label: 'Pagó', substatus: 'PAGO_CONFIRMADO', transitionCodes: ['REGISTRAR_PAGO'] },
+        ],
+    },
+    {
+        status: 'INSCRITO', label: 'Inscrito', substatuses: [
+            { label: 'Se envió formulario', substatus: 'FORMULARIO_ENVIADO', transitionCodes: ['ENVIAR_FORMULARIO'] },
+            { label: 'Devolvió formulario', substatus: 'FORMULARIO_DEVUELTO', transitionCodes: ['RECIBIR_FORMULARIO'] },
+            { label: 'Inspector asignado', substatus: 'INSPECTOR_ASIGNADO', transitionCodes: ['ASIGNAR_INSPECTOR'] },
+            { label: 'Visita en coordinación', substatus: 'VISITA_EN_COORDINACION', transitionCodes: ['PROGRAMAR_VISITA'] },
+            { label: 'Visita reprogramada', substatus: 'VISITA_REPROGRAMADA', transitionCodes: ['REPROGRAMAR_VISITA'] },
+            { label: 'No ubicado', substatus: 'NO_UBICADO_VISITA', transitionCodes: ['MARCAR_NO_UBICADO_VISITA'] },
+            { label: 'Desestimado', substatus: 'VISITA_DESESTIMADA', transitionCodes: ['DESESTIMAR_VISITA'] },
+            { label: 'Visita realizada', substatus: 'VISITA_REALIZADA', transitionCodes: ['REGISTRAR_VISITA'] },
+            { label: 'Pendiente de entregables', substatus: 'PENDIENTE_ENTREGABLES', transitionCodes: ['CONFIRMAR_CONFORMIDAD'] },
+        ],
+    },
+    {
+        status: 'HOMOLOGADO', label: 'Homologado', substatuses: [
+            { label: 'Levantamiento de observaciones', substatus: 'LEVANTAMIENTO_OBSERVACIONES', transitionCodes: ['INICIAR_OBSERVACIONES'] },
+            { label: 'Vigente', substatus: 'VIGENTE', transitionCodes: ['EMITIR_ENTREGABLE', 'CERRAR_OBSERVACIONES'] },
+            { label: 'Por vencer', substatus: 'POR_VENCER', transitionCodes: ['MARCAR_POR_VENCER'], automatic: true },
+            { label: 'Vencido', substatus: 'VENCIDO', transitionCodes: ['MARCAR_VENCIDO'], automatic: true },
+        ],
+    },
+];
 export function workflowRolesForUserRole(role) {
-    if (role === 'supervisor_general')
-        return ['administradora'];
+    if (role === 'supervisor_general' || role === 'administradora')
+        return ['administradora', 'ejecutiva', 'jefe_inspecciones', 'inspector'];
     if (role === 'jefe_inspecciones')
         return ['jefe_inspecciones'];
-    if (role === 'administradora' || role === 'ejecutiva' || role === 'inspector')
+    if (role === 'ejecutiva' || role === 'inspector')
         return [role];
     return [];
 }
@@ -72,6 +112,7 @@ const expectedStateBySubstatus = {
     NO_RESPONDE: { step: 4, status: 'PENDIENTE_INSCRIPCION' },
     DESESTIMADO: { step: 4, status: 'PENDIENTE_INSCRIPCION' },
     NO_PARTICIPA: { step: 4, status: 'PENDIENTE_INSCRIPCION' },
+    CONFIRMARON_PARTICIPACION: { step: 4, status: 'PENDIENTE_INSCRIPCION' },
     PAGO_CONFIRMADO: { step: 5, status: 'INSCRITO' },
     FORMULARIO_ENVIADO: { step: 5, status: 'INSCRITO' },
     FORMULARIO_DEVUELTO: { step: 6, status: 'INSCRITO' },

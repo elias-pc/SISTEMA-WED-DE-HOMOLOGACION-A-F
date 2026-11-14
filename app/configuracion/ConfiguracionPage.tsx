@@ -5,7 +5,7 @@ import type { ConfiguracionHomologacion, Empresa, ProcesoHomologacion } from '..
 import ExecutiveCompanyAccess from './ExecutiveCompanyAccess';
 
 const defaultConfiguration: ConfiguracionHomologacion = {
-  filters: ['', ''],
+  filters: [''],
   documentTypes: [{ name: 'Certificado', validityDays: 360 }, { name: 'Constancia', validityDays: 360 }],
   opinions: ['Apto', 'No Apto', 'Otros'],
   evaluationModules: ['Formalidad y legales', 'Capacidad operativa', 'Producción y servicios', 'SSO', 'Ambiental', 'Calidad', 'Inocuidad - HACCP', 'Responsabilidad social', 'Sostenibilidad', 'BASC', 'POES', 'Comerciales', 'Protección de datos', 'Económica-financiera', 'Otros'],
@@ -57,8 +57,7 @@ function ConfiguracionPage() {
           <label>Fecha de inicio<input type="date" value={form.fechaInicio} onChange={(e) => setField('fechaInicio', e.target.value)} required /></label>
           <label>Fecha límite<input type="date" value={form.fechaLimite} onChange={(e) => setField('fechaLimite', e.target.value)} required /></label>
           <fieldset className="parameter-fieldset"><legend>Parámetros de homologación del cliente</legend><p className="secondary-text">Define aquí los filtros y criterios que aparecerán para los proveedores de esta empresa.</p>
-            <label>Nombre del filtro 1 (opcional)<input value={parameters.filters[0] || ''} placeholder="Ej.: Rubro" onChange={(event) => setParameters((current) => ({ ...current, filters: [event.target.value, current.filters[1] || ''] }))} /></label>
-            <label>Nombre del filtro 2 (opcional)<input value={parameters.filters[1] || ''} placeholder="Ej.: Zona" onChange={(event) => setParameters((current) => ({ ...current, filters: [current.filters[0] || '', event.target.value] }))} /></label>
+            <label>Nombre del filtro (opcional)<input value={parameters.filters[0] || ''} placeholder="Ej.: Rubro" onChange={(event) => setParameters((current) => ({ ...current, filters: [event.target.value] }))} /></label>
             <div className="parameter-list"><strong>Tipos de documento y plazo de vigencia</strong>{parameters.documentTypes.map((item, index) => <div className="parameter-row" key={`${item.name}-${index}`}><input aria-label={`Tipo de documento ${index + 1}`} value={item.name} onChange={(event) => setParameters((current) => ({ ...current, documentTypes: current.documentTypes.map((entry, row) => row === index ? { ...entry, name: event.target.value } : entry) }))} /><input aria-label={`Días de vigencia ${index + 1}`} type="number" min="1" max="3650" value={item.validityDays} onChange={(event) => setParameters((current) => ({ ...current, documentTypes: current.documentTypes.map((entry, row) => row === index ? { ...entry, validityDays: Number(event.target.value) } : entry) }))} /><span>días</span><button type="button" className="btn-secondary" disabled={parameters.documentTypes.length <= 1} onClick={() => setParameters((current) => ({ ...current, documentTypes: current.documentTypes.filter((_, row) => row !== index) }))}>Quitar</button></div>)}<button type="button" className="btn-secondary" onClick={() => setParameters((current) => ({ ...current, documentTypes: [...current.documentTypes, { name: '', validityDays: 360 }] }))}>+ Agregar tipo</button></div>
             <label>Dictámenes (uno por línea)<textarea value={parameters.opinions.join('\n')} onChange={(event) => setParameters((current) => ({ ...current, opinions: event.target.value.split('\n') }))} rows={3} /></label>
             <label>Módulos de evaluación (uno por línea)<textarea value={parameters.evaluationModules.join('\n')} onChange={(event) => setParameters((current) => ({ ...current, evaluationModules: event.target.value.split('\n') }))} rows={6} /></label>

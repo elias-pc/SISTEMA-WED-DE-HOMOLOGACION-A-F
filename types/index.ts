@@ -39,7 +39,9 @@ export type UserRole = 'cliente' | 'ejecutiva' | 'supervisor_empresa' | 'supervi
 
 export type EstadoFlujoProveedor = 'PENDIENTE_INSCRIPCION' | 'INSCRITO' | 'HOMOLOGADO';
 export interface FlujoProveedor { paso: number; estado: EstadoFlujoProveedor; subestado: string; version: number }
-export interface TransicionDisponible { codigo: string; etiqueta: string; datosObligatorios: string[] }
+export interface TransicionDisponible { codigo: string; etiqueta: string; datosObligatorios: string[]; estadoDestino?: string; subestadoDestino?: string }
+export interface CatalogoEstadoOpcion { label: string; substatus: string; transitionCodes: string[]; automatic?: boolean }
+export interface CatalogoEstadoGrupo { status: EstadoFlujoProveedor; label: string; substatuses: CatalogoEstadoOpcion[] }
 
 export interface HistorialFlujo {
   id: string;

@@ -1,9 +1,9 @@
 # Estado actual
 
 - Configuración de parámetros por empresa implementada localmente.
-- Los nuevos proveedores e importaciones guardan los dos filtros configurables.
+- Los nuevos proveedores e importaciones guardan el filtro configurable de la empresa.
 - El expediente usa documentos, dictámenes y módulos configurados; la fecha de vencimiento se calcula desde la vigencia del documento.
-- La tabla de estatus permite visualizar/exportar Filtro 1, Filtro 2 y Módulos.
+- La tabla de status permite visualizar/exportar el filtro configurable y los Módulos; su encabezado usa azul marino, acento rojo y texto blanco.
 - La pantalla Información de proveedores muestra Nro, RUC, Razón Social, Contacto, Teléfonos, E-Mail, Dirección, Departamento y filtros configurados; oculta Acción y el expediente operativo para Cliente y Supervisor de empresa.
 - La migración `006_homologation_parameters.sql` está aplicada en Neon producción; el commit `de96c6c` fue desplegado en Vercel.
 - El login usa un fondo fotográfico, tarjeta a la derecha y monograma A&F; el cambio fue validado localmente con typecheck, build, pruebas y vista del navegador.
@@ -12,3 +12,10 @@
 - Local: se agregó administración de las empresas asociadas a cada ejecutiva desde “Empresas y procesos”. La asociación es explícita y sigue controlando qué ejecutivas aparecen en Carteras; se bloquea retirar una empresa si hay proveedores activos asignados. No se ha hecho commit, push ni despliegue.
 - Local: el dashboard ahora alinea la dona con los cinco status del resumen, apila los tres cuadros de resumen y unifica sus encabezados y la fila Total con la identidad azul institucional. No se ha hecho commit, push ni despliegue.
 - Local: los cinco reportes operativos usan las columnas solicitadas, incluyen logo y colores institucionales en el Excel, permiten buscar y filtrar por cliente/usuario, y exportar siempre con todas las columnas del reporte; resaltan en rojo los días por vencer negativos. El modo demo en memoria ya expone `preview`, `preview/users` y `export`, y la búsqueda también se aplica al Excel exportado. Validado con typecheck, build y 40 pruebas.
+- Local: se aplicaron observaciones del cliente sobre terminología (“Status” en lugar de “Estatus”), se eliminó el Filtro 2 y la columna Paso de Cartera, y Mi Cartera usa las columnas Status/Sub Status. Pendiente de despliegue.
+- Local: la tabla Status de proveedores permite cambiar Status y Sub-Status con una ventana flotante (catálogo del proceso operativo); las opciones no disponibles se muestran deshabilitadas, las automáticas (Por vencer/Vencido) se marcan como tales y las que exigen datos abren un formulario. Se agregó el Sub-Status “Confirmaron participación”, que lleva al proveedor a “Requieren atención”. Cliente y Supervisor de empresa siguen en solo lectura. Validado con typecheck, build, 43 pruebas y navegador; sin commit ni despliegue.
+- Local: el modo demo en memoria (DECAL) tiene 12 proveedores de ejemplo con expediente completo: asignaciones, pagos, formularios, inspecciones, certificados de homologación, historial del flujo y documentos PDF descargables. Los filtros por empresa usan “Rubro” y los cinco reportes operativos muestran datos. Sin commit ni despliegue.
+- Local: la ventana flotante de Status se posiciona y limita su alto al área visible (con scroll interno y botones fijos al pie) y al elegir un sub-status muestra solo el formulario con “Volver”, de modo que registrar el pago se completa incluso en ventanas bajas. Sin commit ni despliegue.
+- Local: Status de proveedores lista todas las filas del rol (sin scroll interno recortado), con filas compactas, columna Módulos visible y contador de proveedores en el encabezado. `administradora` y `supervisor_general` pueden ejecutar las transiciones operativas del flujo (las automáticas siguen solo para el sistema) y la ventana flotante explica cuando un rol no tiene cambios en la etapa actual. Sin commit ni despliegue.
+
+- Local: Información de proveedores tiene filtros por columna bajo cada encabezado (texto para RUC, Razón Social, Contacto, Teléfonos, E-Mail y Dirección; lista para Departamento y filtros configurados), contador "Mostrando X de Y" y "Limpiar filtros". Filtrado en cliente sobre la lista ya cargada. Sin commit ni despliegue.

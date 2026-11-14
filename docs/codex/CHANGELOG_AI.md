@@ -3,6 +3,39 @@
 ## 2026-11-06
 
 ### Tarea
+Mantener la ventana flotante de Status dentro de la pantalla, sobre todo al registrar el pago.
+
+### Archivos principales
+- `components/homologaciones/StatusChangePopover.tsx`
+- `src/styles/global.css`
+
+### Resultado
+La ventana mide su altura real y se posiciona dentro del área visible; su alto máximo es `min(560px, calc(100vh - 1rem))` con desplazamiento interno. Al elegir un sub-status se oculta el catálogo y se muestra solo el formulario, con los botones “Volver” y “Confirmar cambio” fijos al pie. Ya no queda cortada por la barra de tareas y el pago se puede completar en ventanas bajas.
+
+### Consideraciones
+Validado en navegador con 479×481 px: la ventana queda en 8–473 px de alto, el formulario de “Registrar pago” desplaza internamente y no se superpone con los botones. Typecheck de los tres proyectos, build web y 44 pruebas correctos. Sin commit, push ni despliegue.
+
+## 2026-11-06
+
+### Tarea
+Corregir filas recortadas en Status de proveedores y habilitar el cambio de status para la administración.
+
+### Archivos principales
+- `src/styles/global.css`
+- `server/workflow.ts`
+- `components/homologaciones/StatusChangePopover.tsx`
+- `components/homologaciones/ProviderStatusTable.tsx`
+- `server/workflow.test.ts`
+
+### Resultado
+La tabla muestra todas las filas del proceso (ya no hay scroll interno recortando a 4 visibles) con filas compactas y la columna Módulos con ancho propio. El encabezado indica cuántos proveedores hay en el proceso. `administradora` y `supervisor_general` reciben las transiciones operativas de ejecutiva, jefe de inspecciones e inspector sin saltarse el flujo, y las automáticas (Por vencer/Vencido) siguen reservadas al sistema. Si un rol no tiene cambios en la etapa actual, la ventana flotante lo explica.
+
+### Consideraciones
+La diferencia entre 4 y 10 filas era visual (altura fija de 560 px con filas de 160–240 px a poco ancho), no un filtro por rol. Validado con typecheck, build, 44 pruebas y navegador como administradora (12 filas, transición “Registrar visita realizada” aplicada) y como ejecutiva (10 filas). Sin commit, push ni despliegue.
+
+## 2026-11-06
+
+### Tarea
 Completar los reportes operativos con columnas acordadas, identidad institucional y filtros.
 
 ### Archivos principales
@@ -19,6 +52,27 @@ Los cinco reportes (directorio, facturación, homologados, inspecciones y trazab
 
 ### Consideraciones
 Se corrigieron los errores de TypeScript del buffer del logo y del estado HTTP del reporte. Validado con typecheck, build, 40 pruebas, descarga real de Excel y revisión de la pantalla en el navegador. Sin commit, push ni despliegue.
+
+## 2026-11-06
+
+### Tarea
+Aplicar observaciones del cliente sobre status, cartera y parámetros por empresa.
+
+### Archivos principales
+- `components/layout/MainLayout.tsx`
+- `app/homologaciones/HomologacionesPage.tsx`
+- `components/homologaciones/ProviderStatusTable.tsx`
+- `app/carteras/CarterasPage.tsx`
+- `app/mi-cartera/MiCarteraPage.tsx`
+- `app/configuracion/ConfiguracionPage.tsx`
+- `services/statusTable.ts`
+- `src/styles/global.css`
+
+### Resultado
+La terminología visible usa “Status” en lugar de “Estatus”. La tabla de status toma la identidad institucional (azul marino, acento rojo y texto blanco) y ya no muestra Filtro 2. Cartera de ejecutivas eliminó la columna Paso, y Mi Cartera reemplazó Avance/Situación por Status/Sub Status sin referencias al paso.
+
+### Consideraciones
+Los datos históricos de `filtro2` se conservan; solo se dejó de solicitar y mostrar. Validado con typecheck, build, 40 pruebas y revisión en navegador. Sin commit, push ni despliegue.
 
 ## 2026-10-21
 
@@ -167,3 +221,53 @@ La dona ahora muestra los mismos cinco status del resumen principal. Los tres cu
 
 ### Consideraciones
 Validado con typecheck, build y comprobación visual en el entorno local. El cambio es solo de interfaz y permanece sin commit ni despliegue.
+
+## 2026-11-06
+
+### Tarea
+Cambio de Status y Sub-Status desde la tabla de seguimiento, mediante ventana flotante.
+
+### Archivos principales
+- `server/workflow.ts`
+- `server/routes/providers.ts`
+- `server/dev-memory.ts`
+- `server/my-portfolio.ts`
+- `components/homologaciones/ProviderStatusTable.tsx`
+- `components/homologaciones/StatusChangePopover.tsx`
+- `src/styles/global.css`
+- `types/index.ts`, `services/api.ts`
+
+### Resultado
+Las celdas Status y Sub-Status abren una ventana flotante con el catálogo del proceso operativo (Pendiente de inscripción, Inscrito, Homologado). Cada opción se habilita según las transiciones disponibles del rol; las opciones automáticas del sistema se marcan y las que exigen datos abren un formulario antes de confirmar. Se agregó el Sub-Status “Confirmaron participación” y su transición, y `GET /providers/:id/workflow` devuelve el catálogo.
+
+### Consideraciones
+Cliente y Supervisor de empresa mantienen la tabla en solo lectura, y el backend sigue validando rol, estado y campos obligatorios. Validado con typecheck web/servidor, build y 43 pruebas; verificado en navegador con ejecutiva y cliente. Sin commit, push ni despliegue.
+
+## 2026-11-06
+
+### Tarea
+Datos de ejemplo completos en el modo demo en memoria.
+
+### Archivos principales
+- `server/dev-memory.ts`
+- `server/reports.e2e.test.ts`, `server/my-portfolio.e2e.test.ts`
+
+### Resultado
+DECAL pasa de 2 a 12 proveedores con contacto, dirección y Rubro. Cada uno tiene expediente: asignación de ejecutiva, pagos, formularios, inspecciones, certificados (Certificado/Constancia con dictamen, puntaje, módulos y vigencia), historial del flujo hasta su estado actual y documentos PDF generados localmente y descargables. Los filtros de empresa quedan en “Rubro” y los cinco reportes operativos y el dashboard muestran datos reales.
+
+### Consideraciones
+El dashboard del modo demo calcula por vencer/vencidos con la fecha actual en lugar de fechas fijas, y “Tipo de Documento” ya no toma la categoría del expediente. Las pruebas e2e se ajustaron a los nuevos volúmenes (10 proveedores visibles para `ejecutiva@decal.com`). Validado con typecheck, build, 43 pruebas y navegador. Sin commit, push ni despliegue.
+
+## 2026-11-07
+
+### Tarea
+Filtros por columna en Información de proveedores.
+
+### Archivos principales
+- components/proveedores/ProveedoresTable.tsx
+
+### Resultado
+Fila de filtros bajo los encabezados; se combinan con la búsqueda general de la página. Validado con typecheck y 44 pruebas.
+
+### Consideraciones
+El filtrado es en cliente; si la lista crece se deberá mover a filtros/paginación en backend.

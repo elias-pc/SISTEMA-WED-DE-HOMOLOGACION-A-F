@@ -14,4 +14,13 @@ describe('resumen de mi cartera', () => {
     expect(result.providers.map((provider) => provider.categoria)).toEqual(['nuevos', 'gestion', 'prioritarios', 'prioritarios']);
     expect(result.providers.find((provider) => provider.id === 'vence')?.alerta).toBe('Certificado vence en 7 días');
   });
+
+  it('lleva a Requieren atención los proveedores que confirmaron participación', () => {
+    const result = buildMyPortfolio([
+      { id: 'confirma', legalName: 'Confirmó S.A.C.', taxId: '20555555555', currentStep: 4, workflowStatus: 'PENDIENTE_INSCRIPCION', workflowSubstatus: 'CONFIRMARON_PARTICIPACION', assignedAt: '2026-09-01', validUntil: null },
+    ], new Date(2026, 8, 24));
+
+    expect(result.providers[0].categoria).toBe('prioritarios');
+    expect(result.providers[0].alerta).toBe('confirmaron participacion');
+  });
 });

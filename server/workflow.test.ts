@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyWorkflowTransition, availableTransitions, initialProviderWorkflowState, validateTransition } from './workflow.js';
+import { applyWorkflowTransition, availableTransitions, initialProviderWorkflowState, statusCatalog, validateTransition } from './workflow.js';
 
 describe('motor formal de homologación', () => {
   it('inicia todo proveedor en el paso 2 pendiente de inscripción', () => {
@@ -43,8 +43,35 @@ describe('motor formal de homologación', () => {
     expect(validateTransition(state, 'INICIAR_COORDINACION', 'ejecutiva').ok).toBe(true);
   });
 
+  it('registra que el proveedor confirmó participación y permite continuar con el pago', () => {
+    const state = { step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'EN_COORDINACION' } as const;
+    const next = applyWorkflowTransition(state, 'CONFIRMAR_PARTICIPACION', 'ejecutiva');
+    expect(next).toEqual({ step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'CONFIRMARON_PARTICIPACION' });
+    expect(availableTransitions(next, 'ejecutiva').map((item) => item.code)).toContain('REGISTRAR_PAGO');
+    expect(validateTransition({ step: 4, status: 'PENDIENTE_INSCRIPCION', substatus: 'NO_RESPONDE' }, 'CONFIRMAR_PARTICIPACION', 'ejecutiva').ok).toBe(false);
+  });
+
+  it('expone el catálogo de status y sub-status del proceso operativo', () => {
+    const pendiente = statusCatalog.find((group) => group.status === 'PENDIENTE_INSCRIPCION');
+    expect(pendiente?.label).toBe('Pendiente de inscripción');
+    expect(pendiente?.substatuses.map((option) => option.label)).toEqual([
+      'En coordinación', 'Confirmaron participación', 'Cuentan con certificados', 'Datos no corresponden',
+      'No son proveedores', 'No ubicados', 'No responden', 'Desestimado', 'No participan', 'Pagó',
+    ]);
+    expect(pendiente?.substatuses.find((option) => option.label === 'Pagó')?.transitionCodes).toEqual(['REGISTRAR_PAGO']);
+    expect(statusCatalog.find((group) => group.status === 'HOMOLOGADO')?.substatuses.filter((option) => option.automatic).map((option) => option.label)).toEqual(['Por vencer', 'Vencido']);
+  });
+
   it('impide que la ejecutiva se asigne una cartera y autoriza a la supervisora general como administradora', () => {
     expect(validateTransition(initialProviderWorkflowState, 'ASIGNAR_EJECUTIVA', 'ejecutiva', { ejecutivaId: 'eje-decal' }).ok).toBe(false);
     expect(validateTransition(initialProviderWorkflowState, 'ASIGNAR_EJECUTIVA', 'supervisor_general', { ejecutivaId: 'eje-decal' }).ok).toBe(true);
+  });
+
+  it('permite que la administradora ejecute las transiciones operativas sin saltarse el flujo', () => {
+    const state = { step: 6, status: 'INSCRITO', substatus: 'FORMULARIO_DEVUELTO' } as const;
+    expect(availableTransitions(state, 'administradora').map((item) => item.code)).toEqual(['ASIGNAR_INSPECTOR']);
+    expect(validateTransition(state, 'ASIGNAR_INSPECTOR', 'administradora', { inspectorId: 'inspector-decal' }).ok).toBe(true);
+    expect(validateTransition(initialProviderWorkflowState, 'REGISTRAR_PAGO', 'administradora', {}).ok).toBe(false);
+    expect(validateTransition({ step: 9, status: 'HOMOLOGADO', substatus: 'VIGENTE' }, 'MARCAR_VENCIDO', 'administradora').ok).toBe(false);
   });
 });
