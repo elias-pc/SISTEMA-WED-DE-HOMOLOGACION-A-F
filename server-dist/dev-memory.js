@@ -44,11 +44,11 @@ const credentials = [
     ['cli-decal', 'Cliente DECAL', 'cliente@decal.com', 'Cliente123', 'cliente', ['decal']],
     ['eje-decal', 'Ejecutiva DECAL', 'ejecutiva@decal.com', 'Ejecutiva123', 'ejecutiva', ['decal']],
     ['eje-decal-2', 'Ejecutiva DECAL 2', 'ejecutiva2@decal.com', 'Ejecutiva123', 'ejecutiva', ['decal']],
-    ['sup-decal', 'Supervisor DECAL', 'supervisor@decal.com', 'Supervisor123', 'supervisor_empresa', ['decal']],
+    ['sup-decal', 'Inspector DECAL 2', 'supervisor@decal.com', 'Supervisor123', 'inspector', ['decal']],
     ['cli-ufitec', 'Cliente UFITEC', 'cliente@ufitec.com', 'Cliente123', 'cliente', ['ufitec']],
     ['eje-ufitec', 'Ejecutiva UFITEC', 'ejecutiva@ufitec.com', 'Ejecutiva123', 'ejecutiva', ['ufitec']],
-    ['sup-ufitec', 'Supervisor UFITEC', 'supervisor@ufitec.com', 'Supervisor123', 'supervisor_empresa', ['ufitec']],
-    ['supervisor-general', 'Carlos Supervisor General', 'supervisor@af.com', 'super20226ayf', 'supervisor_general', []],
+    ['sup-ufitec', 'Inspector UFITEC', 'supervisor@ufitec.com', 'Supervisor123', 'inspector', ['ufitec']],
+    ['supervisor-general', 'Carlos Administrador', 'supervisor@af.com', 'super20226ayf', 'administradora', []],
     ['admin-af', 'Administradora A&F', 'administradora@af.com', 'super20226ayf', 'administradora', []],
     ['jefe-decal', 'Jefe de Inspecciones DECAL', 'jefe.inspecciones@decal.com', 'Jefe123', 'jefe_inspecciones', ['decal']],
     ['inspector-decal', 'Inspector DECAL', 'inspector@decal.com', 'Inspector123', 'inspector', ['decal']],
@@ -224,13 +224,13 @@ function memoryRecords(provider, transition, data, actor) {
     if (template)
         records.notifications.unshift({ id: randomUUID(), channel: 'WHATSAPP', template_code: template, status: 'OMITIDA', failure_reason: 'WhatsApp está preparado pero permanece desactivado.', created_at: now });
 }
-function currentUser(request) { const token = request.cookies?.[SESSION_COOKIE]; const id = token ? sessions.get(token) : undefined; const found = users.find(user => user.id === id); if (!found)
+function currentUser(request) { const token = request.cookies?.[SESSION_COOKIE]; const id = token ? sessions.get(token) : undefined; const found = users.find(user => user.id === id); if (!found || found.active === false)
     return null; const { passwordHash: _, ...user } = found; return user; }
 function requireUser(request, response, next) { const user = currentUser(request); if (!user)
     return response.status(401).json({ error: 'Autenticación requerida.' }); response.locals.user = user; next(); }
-function scoped(user, companyId) { return user.role === 'supervisor_general' || user.role === 'administradora' || user.empresaIds.includes(companyId); }
+function scoped(user, companyId) { return user.role === 'administradora' || user.empresaIds.includes(companyId); }
 function canSeeProvider(user, provider) {
-    if (user.role === 'supervisor_general' || user.role === 'administradora')
+    if (user.role === 'administradora')
         return true;
     if (user.role === 'ejecutiva')
         return activeExecutiveIds(provider).includes(user.id);
@@ -276,16 +276,16 @@ function assignMemoryPlan(plan, actor, reason) {
     }
     return { assigned, reassigned, unchanged, total: plan.length };
 }
-memoryRouter.post('/auth/login', async (request, response) => { const user = users.find(item => item.email === String(request.body.email || '').trim().toLowerCase()); if (!user || !await bcrypt.compare(String(request.body.password || ''), user.passwordHash))
+memoryRouter.post('/auth/login', async (request, response) => { const user = users.find(item => item.email === String(request.body.email || '').trim().toLowerCase()); if (!user || user.active === false || !await bcrypt.compare(String(request.body.password || ''), user.passwordHash))
     return response.status(401).json({ error: 'Correo o contraseña incorrectos.' }); const session = newSession(); sessions.set(session.token, user.id); setSessionCookie(response, session.token, session.expiresAt); const { passwordHash: _, ...safe } = user; response.json({ user: safe }); });
 memoryRouter.get('/auth/session', requireUser, (request, response) => response.json({ user: response.locals.user }));
 memoryRouter.post('/auth/logout', (request, response) => { const token = request.cookies?.[SESSION_COOKIE]; if (token)
     sessions.delete(token); clearSessionCookie(response); response.status(204).end(); });
 memoryRouter.get('/companies', requireUser, (_request, response) => { const user = response.locals.user; response.json({ companies: companies.filter(item => scoped(user, item.id)) }); });
-memoryRouter.post('/companies', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
+memoryRouter.post('/companies', requireUser, (request, response) => { const user = response.locals.user; if (!['administradora'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); const company = { ...request.body, configuracionHomologacion: normalizeHomologationConfig(request.body.configuracionHomologacion) }; companies.push(company); response.status(201).json({ company }); });
 memoryRouter.get('/processes', requireUser, (_request, response) => { const user = response.locals.user; response.json({ processes: processes.filter(item => scoped(user, item.empresaId) || (user.role === 'ejecutiva' && providers.some(provider => provider.procesoId === item.id && activeExecutiveIds(provider).includes(user.id)))) }); });
-memoryRouter.post('/processes', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
+memoryRouter.post('/processes', requireUser, (request, response) => { const user = response.locals.user; if (!['administradora'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); processes.push(request.body); response.status(201).json({ process: request.body }); });
 memoryRouter.get('/providers', requireUser, (request, response) => { const user = response.locals.user, process = processes.find(item => item.id === request.query.processId); if (!process || !scoped(user, process.empresaId))
     return response.status(403).json({ error: 'Proceso fuera de alcance.' }); response.json({ providers: providers.filter(item => item.procesoId === process.id && canSeeProvider(user, item)).map(item => ({ ...item, transicionesDisponibles: memoryTransitions(item, user) })) }); });
@@ -302,9 +302,9 @@ memoryRouter.get('/providers/my-portfolio', requireUser, (request, response) => 
     });
     response.json(buildMyPortfolio(entries));
 });
-memoryRouter.post('/providers', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
+memoryRouter.post('/providers', requireUser, (request, response) => { const user = response.locals.user; if (!['administradora'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); const provider = { ...request.body, id: request.body.id || randomUUID(), estado: 'En proceso', estadoEjecutiva: 'Contactado', calificacion: 0, fechaRegistro: new Date().toISOString().slice(0, 10), vigencia: 'N/A', flujo: { paso: 2, estado: 'PENDIENTE_INSCRIPCION', subestado: 'REGISTRADO', version: 0 } }; providers.unshift(provider); response.status(201).json({ provider: { ...provider, transicionesDisponibles: memoryTransitions(provider, user) } }); });
-memoryRouter.post('/providers/import/preview', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
+memoryRouter.post('/providers/import/preview', requireUser, (request, response) => { const user = response.locals.user; if (!['administradora'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); try {
     const company = companies.find(item => item.id === request.body.empresaId);
     const rows = parseProviderWorkbook(String(request.body.contentBase64 || ''), company?.configuracionHomologacion.filters || []).map(row => row.provider && providers.some(item => item.procesoId === request.body.procesoId && item.ruc === row.provider.ruc) ? { ...row, provider: undefined, errors: [...row.errors, 'El RUC ya existe en este proceso.'] } : row);
@@ -314,7 +314,7 @@ memoryRouter.post('/providers/import/preview', requireUser, (request, response) 
 catch (error) {
     response.status(422).json({ error: error instanceof Error ? error.message : 'No se pudo leer el archivo Excel.' });
 } });
-memoryRouter.post('/providers/import', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
+memoryRouter.post('/providers/import', requireUser, (request, response) => { const user = response.locals.user; if (!['administradora'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); try {
     const company = companies.find(item => item.id === request.body.empresaId);
     const parsed = parseProviderWorkbook(String(request.body.contentBase64 || ''), company?.configuracionHomologacion.filters || []);
@@ -328,7 +328,7 @@ catch (error) {
 } });
 memoryRouter.get('/assignments/portfolio', requireUser, (request, response) => {
     const user = response.locals.user;
-    if (!['supervisor_general', 'administradora'].includes(user.role))
+    if (!['administradora'].includes(user.role))
         return response.status(403).json({ error: 'No tienes permiso.' });
     const process = processes.find(item => item.id === String(request.query.processId || ''));
     if (!process || !scoped(user, process.empresaId))
@@ -340,7 +340,7 @@ memoryRouter.get('/assignments/portfolio', requireUser, (request, response) => {
 });
 memoryRouter.post('/assignments/assign', requireUser, (request, response) => {
     const user = response.locals.user;
-    if (!['supervisor_general', 'administradora'].includes(user.role))
+    if (!['administradora'].includes(user.role))
         return response.status(403).json({ error: 'No tienes permiso.' });
     const process = processes.find(item => item.id === request.body.processId), executive = users.find(item => item.id === request.body.executiveId && item.role === 'ejecutiva');
     const ids = [...new Set(request.body.providerIds || [])];
@@ -352,7 +352,7 @@ memoryRouter.post('/assignments/assign', requireUser, (request, response) => {
 });
 memoryRouter.post('/assignments/distribute', requireUser, (request, response) => {
     const user = response.locals.user;
-    if (!['supervisor_general', 'administradora'].includes(user.role))
+    if (!['administradora'].includes(user.role))
         return response.status(403).json({ error: 'No tienes permiso.' });
     const process = processes.find(item => item.id === request.body.processId), ids = [...new Set(request.body.providerIds || [])];
     if (!process || ids.some(id => !providers.some(item => item.id === id && item.procesoId === process.id)))
@@ -370,7 +370,7 @@ memoryRouter.post('/assignments/distribute', requireUser, (request, response) =>
 });
 memoryRouter.post('/assignments/unassign', requireUser, (request, response) => {
     const user = response.locals.user;
-    if (!['supervisor_general', 'administradora'].includes(user.role))
+    if (!['administradora'].includes(user.role))
         return response.status(403).json({ error: 'No tienes permiso.' });
     const process = processes.find(item => item.id === request.body.processId), ids = [...new Set(request.body.providerIds || [])], executiveId = String(request.body.executiveId || '');
     if (!process || !executiveId || ids.some(id => !providers.some(item => item.id === id && item.procesoId === process.id)))
@@ -398,7 +398,7 @@ memoryRouter.get('/providers/:id/dossier', requireUser, (request, response) => {
     return response.status(404).json({ error: 'Proveedor no encontrado.' }); if (!canSeeProvider(user, provider))
     return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' }); response.json(dossier(provider.id)); });
 memoryRouter.put('/providers/:id/contact-preferences', requireUser, (request, response) => { const user = response.locals.user, provider = providers.find(item => item.id === request.params.id); if (!provider)
-    return response.status(404).json({ error: 'Proveedor no encontrado.' }); if (!['supervisor_general', 'administradora', 'ejecutiva'].includes(user.role) || !canSeeProvider(user, provider))
+    return response.status(404).json({ error: 'Proveedor no encontrado.' }); if (!['administradora', 'ejecutiva'].includes(user.role) || !canSeeProvider(user, provider))
     return response.status(403).json({ error: 'No tienes permiso.' }); const preferences = { provider_id: provider.id, whatsapp_phone: request.body.whatsappPhone || null, whatsapp_opt_in: Boolean(request.body.whatsappOptIn), whatsapp_opt_in_at: request.body.whatsappOptIn ? new Date().toISOString() : null, whatsapp_opt_in_source: request.body.whatsappOptInSource || null, updated_at: new Date().toISOString() }; dossier(provider.id).contactPreferences = preferences; response.json({ contactPreferences: preferences }); });
 memoryRouter.post('/providers/:id/documents', requireUser, async (request, response) => { const user = response.locals.user, provider = providers.find(item => item.id === request.params.id); if (!provider)
     return response.status(404).json({ error: 'Proveedor no encontrado.' }); if (!canSeeProvider(user, provider))
@@ -456,19 +456,32 @@ memoryRouter.post('/providers/:id/transitions', requireUser, (request, response)
     memoryRecords(provider, code, data, user);
     response.json({ provider, transicionesDisponibles: memoryTransitions(provider, user) });
 });
-memoryRouter.post('/users', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
+memoryRouter.post('/users', requireUser, (request, response) => { const user = response.locals.user; if (!['administradora'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); const created = { ...request.body, id: request.body.id || randomUUID(), passwordHash: bcrypt.hashSync(request.body.password, 10) }; users.push(created); const { passwordHash: _, password: __, ...safe } = created; response.status(201).json({ user: safe }); });
-memoryRouter.get('/users', requireUser, (request, response) => { const user = response.locals.user, companyId = String(request.query.empresaId || ''); if (!['supervisor_general', 'administradora', 'jefe_inspecciones'].includes(user.role))
+memoryRouter.get('/users', requireUser, (request, response) => { const user = response.locals.user, companyId = String(request.query.empresaId || ''); if (!['administradora', 'jefe_inspecciones'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); if (!companyId)
     return response.status(400).json({ error: 'Debes indicar una empresa.' }); if (!scoped(user, companyId))
     return response.status(403).json({ error: 'Empresa fuera de tu alcance.' }); response.json({ users: users.filter(item => item.empresaIds.some((id) => id === companyId)).map(({ passwordHash, ...safe }) => safe) }); });
-memoryRouter.get('/users/executives', requireUser, (request, response) => { const user = response.locals.user; if (!['supervisor_general', 'administradora'].includes(user.role))
+memoryRouter.get('/users/executives', requireUser, (request, response) => { const user = response.locals.user; if (!['administradora'].includes(user.role))
     return response.status(403).json({ error: 'No tienes permiso.' }); response.json({ users: users.filter(item => item.role === 'ejecutiva' && item.active !== false).map(({ passwordHash, ...safe }) => safe) }); });
+const memoryInternalRoles = ['ejecutiva', 'jefe_inspecciones', 'inspector'];
+memoryRouter.get('/users/internal', requireUser, (_request, response) => { const user = response.locals.user; if (user.role !== 'administradora')
+    return response.status(403).json({ error: 'No tienes permiso.' }); response.json({ users: users.filter(item => memoryInternalRoles.includes(item.role)).map(({ passwordHash: _, ...safe }) => ({ ...safe, active: safe.active !== false })) }); });
+memoryRouter.patch('/users/:userId', requireUser, (request, response) => { const user = response.locals.user; if (user.role !== 'administradora')
+    return response.status(403).json({ error: 'No tienes permiso.' }); const target = users.find(item => item.id === String(request.params.userId) && memoryInternalRoles.includes(item.role)); if (!target)
+    return response.status(404).json({ error: 'Usuario interno no encontrado.' }); const body = request.body || {}; if (typeof body.name === 'string' && body.name.trim())
+    target.name = body.name.trim(); if (typeof body.email === 'string' && body.email.trim())
+    target.email = body.email.trim().toLowerCase(); if (typeof body.active === 'boolean')
+    target.active = body.active; const { passwordHash: _, ...safe } = target; response.json({ user: { ...safe, active: target.active !== false } }); });
+memoryRouter.post('/users/:userId/password', requireUser, (request, response) => { const user = response.locals.user; if (user.role !== 'administradora')
+    return response.status(403).json({ error: 'No tienes permiso.' }); const target = users.find(item => item.id === String(request.params.userId) && memoryInternalRoles.includes(item.role)); const password = String(request.body?.password || ''); if (!target)
+    return response.status(404).json({ error: 'Usuario interno no encontrado.' }); if (password.length < 8)
+    return response.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' }); target.passwordHash = bcrypt.hashSync(password, 10); response.json({ ok: true }); });
 memoryRouter.patch('/users/:userId/companies', requireUser, (request, response) => {
     const actor = response.locals.user;
-    if (!['supervisor_general', 'administradora'].includes(actor.role))
+    if (!['administradora'].includes(actor.role))
         return response.status(403).json({ error: 'No tienes permiso.' });
-    const target = users.find(item => item.id === String(request.params.userId) && item.role === 'ejecutiva' && item.active !== false), empresaIds = request.body?.empresaIds;
+    const target = users.find(item => item.id === String(request.params.userId) && ['ejecutiva', 'jefe_inspecciones', 'inspector'].includes(item.role) && item.active !== false), empresaIds = request.body?.empresaIds;
     if (!target)
         return response.status(404).json({ error: 'No se encontró una ejecutiva activa.' });
     if (!Array.isArray(empresaIds) || !empresaIds.length || empresaIds.some((id) => typeof id !== 'string' || !companies.some(company => company.id === id)) || new Set(empresaIds).size !== empresaIds.length)
@@ -563,7 +576,7 @@ memoryRouter.get('/reports/operational', requireUser, (request, response) => { c
     return response.status(400).json({ error: 'Tipo de reporte no válido.' }); response.json({ type, ...reports[type] }); });
 memoryRouter.get('/reports/productivity', requireUser, (request, response) => {
     const user = response.locals.user;
-    if (!['supervisor_general', 'administradora'].includes(user.role))
+    if (!['administradora'].includes(user.role))
         return response.status(403).json({ error: 'No tienes permiso.' });
     const process = processes.find(item => item.id === String(request.query.processId || ''));
     if (!process)
@@ -591,7 +604,7 @@ memoryRouter.get('/cron/certificates', (request, response) => { if (!config.cron
     workflowHistory.set(provider.id, [{ id: randomUUID(), transition_code: transition, from_step: state.step, from_status: state.status, from_substatus: state.substatus, to_step: to.step, to_status: to.status, to_substatus: to.substatus, actor_user_id: null, actor_role: 'sistema', reason: 'Actualización automática de vigencia.', metadata: {}, created_at: new Date().toISOString() }, ...(workflowHistory.get(provider.id) || [])]);
     provider.flujo = { paso: to.step, estado: to.status, subestado: to.substatus, version: provider.flujo.version + 1 };
     provider.estado = legacyProviderStatus(to);
-    memoryRecords(provider, transition, {}, { id: 'sistema', name: 'Sistema', email: '', role: 'supervisor_general', empresaIds: [] });
+    memoryRecords(provider, transition, {}, { id: 'sistema', name: 'Sistema', email: '', role: 'administradora', empresaIds: [] });
     if (transition === 'MARCAR_VENCIDO')
         vencidos += 1;
     else

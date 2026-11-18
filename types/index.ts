@@ -35,7 +35,7 @@ export interface DashboardMetric {
   description?: string;
 }
 
-export type UserRole = 'cliente' | 'ejecutiva' | 'supervisor_empresa' | 'supervisor_general' | 'administradora' | 'jefe_inspecciones' | 'inspector';
+export type UserRole = 'cliente' | 'ejecutiva' | 'administradora' | 'jefe_inspecciones' | 'inspector';
 
 export type EstadoFlujoProveedor = 'PENDIENTE_INSCRIPCION' | 'INSCRITO' | 'HOMOLOGADO';
 export interface FlujoProveedor { paso: number; estado: EstadoFlujoProveedor; subestado: string; version: number }
@@ -148,6 +148,7 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   empresaIds: string[];
+  active?: boolean;
 }
 
 export type EmpresaEstado = 'Activa' | 'Inactiva' | 'Archivada';

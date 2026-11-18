@@ -32,7 +32,7 @@ function ReportesPage() {
   const [from, setFrom] = useState(`${new Date().getFullYear()}-01-01`);
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
   const [productivity, setProductivity] = useState<ReporteProductividad | null>(null);
-  const canViewProductivity = user?.role === 'supervisor_general' || user?.role === 'administradora';
+  const canViewProductivity = user?.role === 'administradora';
   const selectedReport = reportes.find((item) => item.id === selectedType)!;
 
   const loadReport = async (type = selectedType, userId = selectedUserId) => {

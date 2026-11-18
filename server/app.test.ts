@@ -15,7 +15,7 @@ describe('API local y serverless', () => {
       .set('Origin', 'http://localhost:4173')
       .send({ email: 'supervisor@af.com', password: 'super20226ayf' });
     expect(response.status).toBe(200);
-    expect(response.body.user.role).toBe('supervisor_general');
+    expect(response.body.user.role).toBe('administradora');
     expect(response.headers['set-cookie']?.[0]).toContain('HttpOnly');
   });
 

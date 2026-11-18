@@ -6,7 +6,7 @@ import { pool } from '../db/pool.js';
 import { authenticateRequest, canAccessCompany, requireRoles } from '../middleware/auth.js';
 import { validateBody } from '../validation.js';
 export const assignmentsRouter = Router();
-assignmentsRouter.use(authenticateRequest, requireRoles('supervisor_general', 'administradora'));
+assignmentsRouter.use(authenticateRequest, requireRoles('administradora'));
 const providerIdsSchema = z.array(z.string().trim().min(1)).min(1).max(1_000);
 const assignmentSchema = z.object({
     processId: z.string().trim().min(1),

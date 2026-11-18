@@ -49,7 +49,7 @@ function publicTransition(transition:ReturnType<typeof availableTransitions>[num
 }
 
 const createSchema=z.object({id:z.string().optional(),empresaId:z.string().min(1),procesoId:z.string().min(1),razonSocial:z.string().min(2).max(180),ruc:z.string().regex(/^\d{11}$/),personaContacto:z.string().min(2).max(120),telefonos:z.string().min(6).max(80),email:z.string().email(),direccion:z.string().min(3).max(240),departamento:z.string().min(2).max(80),distrito:z.string().min(2).max(80),actividadPrincipal:z.string().min(2).max(240),atributos:z.record(z.string().min(1).max(80),z.string().trim().max(180)).default({})});
-providersRouter.post('/',requireRoles('supervisor_general','administradora'),validateBody(createSchema),async(request,response)=>{
+providersRouter.post('/',requireRoles('administradora'),validateBody(createSchema),async(request,response)=>{
  const user=(request as AuthenticatedRequest).user,b=request.body;
  const process=await pool.query('SELECT company_id,executive_id FROM homologation_processes WHERE id=$1',[b.procesoId]);
  if(!process.rowCount||process.rows[0].company_id!==b.empresaId)return response.status(400).json({error:'El proceso no pertenece a la empresa indicada.'});
@@ -96,7 +96,7 @@ function importSummary(rows:ImportedProviderRow[]) {
  return {totalRows:rows.length,readyRows:imported,rejectedRows:rows.length-imported};
 }
 
-providersRouter.post('/import/preview',requireRoles('supervisor_general','administradora'),validateBody(importSchema),async(request,response)=>{
+providersRouter.post('/import/preview',requireRoles('administradora'),validateBody(importSchema),async(request,response)=>{
  const user=request as AuthenticatedRequest,body=request.body as z.infer<typeof importSchema>;
  const scope=await importScope(user,body.empresaId,body.procesoId); if('error' in scope)return response.status(400).json(scope);
  try {
@@ -105,7 +105,7 @@ providersRouter.post('/import/preview',requireRoles('supervisor_general','admini
  } catch(error) { response.status(422).json({error:error instanceof Error?error.message:'No se pudo leer el archivo Excel.'}); }
 });
 
-providersRouter.post('/import',requireRoles('supervisor_general','administradora'),validateBody(importSchema),async(request,response)=>{
+providersRouter.post('/import',requireRoles('administradora'),validateBody(importSchema),async(request,response)=>{
  const user=request as AuthenticatedRequest,body=request.body as z.infer<typeof importSchema>;
  const scope=await importScope(user,body.empresaId,body.procesoId); if('error' in scope)return response.status(400).json(scope);
  let rows:ImportedProviderRow[];
@@ -241,7 +241,7 @@ providersRouter.get('/:id/documents/:documentId/content',async(request,response)
 });
 
 const contactPreferencesSchema=z.object({whatsappPhone:z.string().trim().min(7).max(32).optional(),whatsappOptIn:z.boolean(),whatsappOptInSource:z.string().trim().min(3).max(120).optional()});
-providersRouter.put('/:id/contact-preferences',requireRoles('supervisor_general','administradora','ejecutiva'),validateBody(contactPreferencesSchema),async(request,response)=>{
+providersRouter.put('/:id/contact-preferences',requireRoles('administradora','ejecutiva'),validateBody(contactPreferencesSchema),async(request,response)=>{
  const user=(request as unknown as AuthenticatedRequest).user;
  const found=await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`,[request.params.id]);
  if(!found.rowCount)return response.status(404).json({error:'Proveedor no encontrado.'});
@@ -316,7 +316,7 @@ function legacyDetailStatuses(substatus:WorkflowState['substatus']){
 }
 
 async function canAccessProvider(user:SessionUser,row:Record<string,unknown>,client?:PoolClient){
- if(user.role==='supervisor_general'||user.role==='administradora')return true;
+ if(user.role === 'administradora')return true;
  if(user.role==='ejecutiva'){
   const assignment=await (client||pool).query(`SELECT 1 FROM provider_assignments WHERE provider_id=$1 AND assignment_role='ejecutiva' AND assigned_user_id=$2 AND released_at IS NULL LIMIT 1`,[row.id,user.id]);
   return Boolean(assignment.rowCount);

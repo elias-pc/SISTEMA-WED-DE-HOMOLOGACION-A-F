@@ -10,7 +10,7 @@ const defaultConfiguration: ConfiguracionHomologacion = {
   opinions: ['Apto', 'No Apto', 'Otros'],
   evaluationModules: ['Formalidad y legales', 'Capacidad operativa', 'Producción y servicios', 'SSO', 'Ambiental', 'Calidad', 'Inocuidad - HACCP', 'Responsabilidad social', 'Sostenibilidad', 'BASC', 'POES', 'Comerciales', 'Protección de datos', 'Económica-financiera', 'Otros'],
 };
-const initialForm = { razonSocial: '', ruc: '', nombreComercial: '', contacto: '', email: '', telefono: '', nombreProceso: '', codigo: '', fechaInicio: '', fechaLimite: '', clienteEmail: '', clientePassword: '', supervisorEmail: '', supervisorPassword: '' };
+const initialForm = { razonSocial: '', ruc: '', nombreComercial: '', contacto: '', email: '', telefono: '', nombreProceso: '', codigo: '', fechaInicio: '', fechaLimite: '', clienteEmail: '', clientePassword: '' };
 
 function ConfiguracionPage() {
   const { empresas, procesos, createEmpresaConProceso } = useTenant();
@@ -31,10 +31,9 @@ function ConfiguracionPage() {
       await createEmpresaConProceso(empresa, proceso);
       await Promise.all([
         api.createUser({ id: `cliente-${empresaId}`, name: `Cliente ${form.nombreComercial}`, email: form.clienteEmail.trim().toLowerCase(), password: form.clientePassword, role: 'cliente', empresaIds: [empresaId] }),
-        api.createUser({ id: `supervisor-${empresaId}`, name: `Supervisor ${form.nombreComercial}`, email: form.supervisorEmail.trim().toLowerCase(), password: form.supervisorPassword, role: 'supervisor_empresa', empresaIds: [empresaId] }),
       ]);
       setForm(initialForm); setParameters(defaultConfiguration);
-      setMessage('Empresa, proceso y usuarios creados correctamente.');
+      setMessage('Empresa, proceso y usuario cliente creados correctamente.');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudo crear la empresa.'); }
   };
 
@@ -42,7 +41,7 @@ function ConfiguracionPage() {
     <div className="container">
       <section className="card">
         <h2 className="page-title">Empresas y procesos</h2>
-        <p className="secondary-text">Administración exclusiva del supervisor general. Cada empresa mantiene información y supervisión independientes.</p>
+        <p className="secondary-text">Administración exclusiva del administrador. Cada empresa mantiene su información independiente; las ejecutivas e inspectores se crean en «Usuarios internos».</p>
         <ExecutiveCompanyAccess companies={empresas} />
         <form className="provider-form" onSubmit={handleSubmit}>
           <h3>Nueva empresa y proceso de homologación</h3>
@@ -64,8 +63,6 @@ function ConfiguracionPage() {
           </fieldset>
           <label>Correo del usuario cliente<input type="email" value={form.clienteEmail} onChange={(e) => setField('clienteEmail', e.target.value)} required /></label>
           <label>Contraseña inicial<input type="text" minLength={8} value={form.clientePassword} onChange={(e) => setField('clientePassword', e.target.value)} required /></label>
-          <label>Correo del supervisor de empresa<input type="email" value={form.supervisorEmail} onChange={(e) => setField('supervisorEmail', e.target.value)} required /></label>
-          <label>Contraseña del supervisor<input type="text" minLength={8} value={form.supervisorPassword} onChange={(e) => setField('supervisorPassword', e.target.value)} required /></label>
           <button className="btn-primary" type="submit">Crear empresa y proceso</button>
         </form>
         {message ? <p className="success-message" role="status">{message}</p> : null}

@@ -6,7 +6,7 @@ function UnauthorizedPage() {
       <section className="card" style={{ maxWidth: 620, margin: '3rem auto', textAlign: 'center' }}>
         <p className="role-badge" style={{ display: 'inline-block' }}>Acceso restringido</p>
         <h2 className="page-title">No tienes permiso para ingresar a esta sección</h2>
-        <p className="secondary-text">Tu cuenta no incluye esta función. Si la necesitas, comunícate con un supervisor.</p>
+        <p className="secondary-text">Tu cuenta no incluye esta función. Si la necesitas, comunícate con el administrador.</p>
         <Link className="btn-primary inline-button" to="/panel">Volver al panel</Link>
       </section>
     </div>

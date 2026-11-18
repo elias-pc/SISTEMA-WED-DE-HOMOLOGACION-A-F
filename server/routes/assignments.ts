@@ -9,7 +9,7 @@ import type { AuthenticatedRequest, SessionUser } from '../types.js';
 import { validateBody } from '../validation.js';
 
 export const assignmentsRouter = Router();
-assignmentsRouter.use(authenticateRequest, requireRoles('supervisor_general', 'administradora'));
+assignmentsRouter.use(authenticateRequest, requireRoles('administradora'));
 
 const providerIdsSchema = z.array(z.string().trim().min(1)).min(1).max(1_000);
 const assignmentSchema = z.object({

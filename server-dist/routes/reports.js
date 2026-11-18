@@ -131,7 +131,7 @@ reportsRouter.get('/operational/export', async (request, response) => {
     response.send(bytes);
 });
 const productivityQuery = z.object({ processId: z.string().min(1), from: z.string().date(), to: z.string().date() }).refine((value) => value.to >= value.from, { path: ['to'], message: 'La fecha final debe ser posterior a la inicial.' });
-reportsRouter.get('/productivity', requireRoles('supervisor_general', 'administradora'), async (request, response) => {
+reportsRouter.get('/productivity', requireRoles('administradora'), async (request, response) => {
     const parsed = productivityQuery.safeParse(request.query);
     if (!parsed.success)
         return response.status(400).json({ error: 'Debes indicar un proceso y un período válidos.' });

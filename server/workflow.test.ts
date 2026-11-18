@@ -64,7 +64,7 @@ describe('motor formal de homologación', () => {
 
   it('impide que la ejecutiva se asigne una cartera y autoriza a la supervisora general como administradora', () => {
     expect(validateTransition(initialProviderWorkflowState, 'ASIGNAR_EJECUTIVA', 'ejecutiva', { ejecutivaId: 'eje-decal' }).ok).toBe(false);
-    expect(validateTransition(initialProviderWorkflowState, 'ASIGNAR_EJECUTIVA', 'supervisor_general', { ejecutivaId: 'eje-decal' }).ok).toBe(true);
+    expect(validateTransition(initialProviderWorkflowState, 'ASIGNAR_EJECUTIVA', 'administradora', { ejecutivaId: 'eje-decal' }).ok).toBe(true);
   });
 
   it('permite que la administradora ejecute las transiciones operativas sin saltarse el flujo', () => {

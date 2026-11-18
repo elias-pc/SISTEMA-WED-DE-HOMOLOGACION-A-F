@@ -28,6 +28,9 @@ export const api={
   previewProviderImport:(payload:{empresaId:string;procesoId:string;fileName:string;contentBase64:string})=>request<ImportPreview>('/providers/import/preview',{method:'POST',body:JSON.stringify(payload)}),
   importProviders:(payload:{empresaId:string;procesoId:string;fileName:string;contentBase64:string})=>request<ImportPreview>('/providers/import',{method:'POST',body:JSON.stringify(payload)}),
   users:(empresaId:string)=>request<{users:AuthUser[]}>(`/users?empresaId=${encodeURIComponent(empresaId)}`),
+  internalUsers:()=>request<{users:AuthUser[]}>('/users/internal'),
+  updateUser:(userId:string,changes:{name?:string;email?:string;active?:boolean})=>request<{user:AuthUser}>(`/users/${encodeURIComponent(userId)}`,{method:'PATCH',body:JSON.stringify(changes)}),
+  resetUserPassword:(userId:string,password:string)=>request<{ok:boolean}>(`/users/${encodeURIComponent(userId)}/password`,{method:'POST',body:JSON.stringify({password})}),
   executives:()=>request<{users:AuthUser[]}>('/users/executives'),
   updateExecutiveCompanies:(userId:string,empresaIds:string[])=>request<{user:AuthUser}>(`/users/${encodeURIComponent(userId)}/companies`,{method:'PATCH',body:JSON.stringify({empresaIds})}),
   dashboardReport:(processId:string)=>request<DashboardResumen>(`/reports/dashboard?processId=${encodeURIComponent(processId)}`),
@@ -40,5 +43,5 @@ export const api={
   assignProviders:(payload:{processId:string;providerIds:string[];executiveId:string;reason:string})=>request<ResultadoAsignacion>('/assignments/assign',{method:'POST',body:JSON.stringify(payload)}),
   distributeProviders:(payload:{processId:string;providerIds:string[];mode:'balanced'|'quantity';executiveIds?:string[];quantities?:Array<{executiveId:string;quantity:number}>;reason:string})=>request<ResultadoAsignacion>('/assignments/distribute',{method:'POST',body:JSON.stringify(payload)}),
   unassignProviders:(payload:{processId:string;providerIds:string[];executiveId:string;reason:string})=>request<ResultadoAsignacion>('/assignments/unassign',{method:'POST',body:JSON.stringify(payload)}),
-  createUser:(user:{id?:string;name:string;email:string;password:string;role:'cliente'|'ejecutiva'|'supervisor_empresa'|'jefe_inspecciones'|'inspector';empresaIds:string[]})=>request<{user:AuthUser}>('/users',{method:'POST',body:JSON.stringify(user)}),
+  createUser:(user:{id?:string;name:string;email:string;password:string;role:'cliente'|'ejecutiva'|'jefe_inspecciones'|'inspector';empresaIds:string[]})=>request<{user:AuthUser}>('/users',{method:'POST',body:JSON.stringify(user)}),
 };

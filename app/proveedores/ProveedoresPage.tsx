@@ -24,8 +24,8 @@ function ProveedoresPage() {
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const canEdit = user?.role === 'administradora' || user?.role === 'supervisor_general';
-  const canOpenProviderWorkbench = Boolean(user && user.role !== 'cliente' && user.role !== 'supervisor_empresa');
+  const canEdit = user?.role === 'administradora';
+  const canOpenProviderWorkbench = Boolean(user && user.role !== 'cliente');
 
   const proveedoresFiltrados = useMemo(() => {
     const term = search.trim().toLowerCase();

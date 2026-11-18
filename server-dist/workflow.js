@@ -93,7 +93,7 @@ export const statusCatalog = [
     },
 ];
 export function workflowRolesForUserRole(role) {
-    if (role === 'supervisor_general' || role === 'administradora')
+    if (role === 'administradora')
         return ['administradora', 'ejecutiva', 'jefe_inspecciones', 'inspector'];
     if (role === 'jefe_inspecciones')
         return ['jefe_inspecciones'];

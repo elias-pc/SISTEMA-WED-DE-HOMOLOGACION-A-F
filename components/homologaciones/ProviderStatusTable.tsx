@@ -16,7 +16,7 @@ interface Props {
 
 function ProviderStatusTable({ processId, processCode, filterLabels, companyId, configuration }: Props) {
   const { user } = useAuth();
-  const canChangeStatus = Boolean(user && user.role !== 'cliente' && user.role !== 'supervisor_empresa');
+  const canChangeStatus = Boolean(user && user.role !== 'cliente');
   const [statusTarget, setStatusTarget] = useState<{ row: EstadoProveedorReporte; anchor: { x: number; y: number } } | null>(null);
   const [allRows, setRows] = useState<EstadoProveedorReporte[]>([]);
   const [search, setSearch] = useState('');

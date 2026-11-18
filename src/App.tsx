@@ -11,6 +11,7 @@ import ProtectedRoute from './auth/ProtectedRoute';
 import LandingPage from '../app/landing/LandingPage';
 import CarterasPage from '../app/carteras/CarterasPage';
 import MiCarteraPage from '../app/mi-cartera/MiCarteraPage';
+import UsuariosPage from '../app/usuarios/UsuariosPage';
 import { features } from '../services/features';
 
 function App() {
@@ -23,12 +24,13 @@ function App() {
           <Route index element={<DashboardPage />} />
           <Route path="proveedores" element={<ProveedoresPage />} />
           <Route path="homologaciones" element={features.providerStatusTab ? <HomologacionesPage /> : <Navigate to="/panel" replace />} />
-          <Route element={<ProtectedRoute allowedRoles={['ejecutiva', 'supervisor_empresa', 'supervisor_general', 'administradora', 'jefe_inspecciones', 'inspector']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['ejecutiva', 'administradora', 'jefe_inspecciones', 'inspector']} />}>
             <Route path="reportes" element={<ReportesPage />} />
           </Route>
-          <Route element={<ProtectedRoute allowedRoles={['supervisor_general', 'administradora']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['administradora']} />}>
             <Route path="configuracion" element={<ConfiguracionPage />} />
             <Route path="carteras" element={<CarterasPage />} />
+            <Route path="usuarios" element={<UsuariosPage />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['ejecutiva']} />}>
             <Route path="mi-cartera" element={<MiCarteraPage />} />

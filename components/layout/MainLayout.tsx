@@ -10,6 +10,7 @@ const menuItems: Array<{ label: string; path: string; hidden?: boolean }> = [
   { label: 'Mi cartera', path: '/panel/mi-cartera' },
   { label: 'Status de proveedores', path: '/panel/homologaciones', hidden: !features.providerStatusTab },
   { label: 'Cartera de ejecutivas', path: '/panel/carteras' }, { label: 'Reportes', path: '/panel/reportes' }, { label: 'Empresas y procesos', path: '/panel/configuracion' },
+  { label: 'Usuarios internos', path: '/panel/usuarios' },
 ];
 
 function MainLayout() {
