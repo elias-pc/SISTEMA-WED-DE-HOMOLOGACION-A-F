@@ -1,8 +1,10 @@
 import type { ProviderWorkflowSubstatus } from './workflow.js';
 
-export function expiryTransition(substatus: ProviderWorkflowSubstatus, validUntil: string | null | undefined, asOf: Date) {
+export function expiryTransition(substatus: ProviderWorkflowSubstatus, validUntil: string | Date | null | undefined, asOf: Date) {
   if (!validUntil || !['VIGENTE', 'POR_VENCER'].includes(substatus)) return null;
-  const expiry = new Date(`${validUntil.slice(0, 10)}T00:00:00.000Z`);
+  // PostgreSQL puede entregar la fecha como objeto Date: se normaliza a AAAA-MM-DD antes de comparar.
+  const isoDate = validUntil instanceof Date ? validUntil.toISOString().slice(0, 10) : String(validUntil).slice(0, 10);
+  const expiry = new Date(`${isoDate}T00:00:00.000Z`);
   if (Number.isNaN(expiry.getTime())) return null;
   const today = new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), asOf.getUTCDate()));
   if (expiry < today && substatus !== 'VENCIDO') return 'MARCAR_VENCIDO' as const;

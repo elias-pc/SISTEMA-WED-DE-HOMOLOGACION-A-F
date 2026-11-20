@@ -12,3 +12,10 @@ describe('automatización de vigencia', () => {
     expect(expiryTransition('LEVANTAMIENTO_OBSERVACIONES', '2026-09-02', today)).toBeNull();
   });
 });
+
+describe('expiryTransition con fechas entregadas por PostgreSQL', () => {
+  it('acepta un objeto Date y no solo texto', () => {
+    expect(expiryTransition('VIGENTE', new Date('2026-11-30T00:00:00.000Z'), new Date('2026-11-20T12:00:00.000Z'))).toBe('MARCAR_POR_VENCER');
+    expect(expiryTransition('POR_VENCER', new Date('2026-11-10T00:00:00.000Z'), new Date('2026-11-20T12:00:00.000Z'))).toBe('MARCAR_VENCIDO');
+  });
+});

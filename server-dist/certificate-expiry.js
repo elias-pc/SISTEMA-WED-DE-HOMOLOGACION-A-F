@@ -1,7 +1,9 @@
 export function expiryTransition(substatus, validUntil, asOf) {
     if (!validUntil || !['VIGENTE', 'POR_VENCER'].includes(substatus))
         return null;
-    const expiry = new Date(`${validUntil.slice(0, 10)}T00:00:00.000Z`);
+    // PostgreSQL puede entregar la fecha como objeto Date: se normaliza a AAAA-MM-DD antes de comparar.
+    const isoDate = validUntil instanceof Date ? validUntil.toISOString().slice(0, 10) : String(validUntil).slice(0, 10);
+    const expiry = new Date(`${isoDate}T00:00:00.000Z`);
     if (Number.isNaN(expiry.getTime()))
         return null;
     const today = new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), asOf.getUTCDate()));

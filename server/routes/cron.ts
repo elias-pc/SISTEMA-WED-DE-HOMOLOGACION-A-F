@@ -14,7 +14,7 @@ cronRouter.get('/certificates', async (request, response) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const candidates = await client.query(`SELECT id,current_step,workflow_status,workflow_substatus,valid_until FROM providers WHERE workflow_substatus IN ('VIGENTE','POR_VENCER') AND valid_until IS NOT NULL FOR UPDATE`);
+    const candidates = await client.query(`SELECT id,current_step,workflow_status,workflow_substatus,valid_until::text AS valid_until FROM providers WHERE workflow_substatus IN ('VIGENTE','POR_VENCER') AND valid_until IS NOT NULL FOR UPDATE`);
     const counters = { porVencer: 0, vencidos: 0 };
     for (const row of candidates.rows) {
       const from: WorkflowState = { step: Number(row.current_step) as WorkflowState['step'], status: row.workflow_status, substatus: row.workflow_substatus };
