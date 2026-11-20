@@ -65,7 +65,7 @@ No existe una transición directa entre resultados alternativos. Por ejemplo, `N
 | `REGISTRAR_PAGO` | Ejecutiva | Pendiente → inscrito; exige datos del pago |
 | `ENVIAR_FORMULARIO` | Ejecutiva | Pago confirmado → formulario enviado |
 | `RECIBIR_FORMULARIO` | Ejecutiva | Formulario enviado → formulario devuelto |
-| `ASIGNAR_INSPECTOR` | Jefe de inspecciones | Formulario devuelto → inspector asignado |
+| `ASIGNAR_INSPECTOR` | Jefe de inspectores | Formulario enviado (o devuelto) → inspector asignado. La ejecutiva no puede asignar inspector. |
 | `PROGRAMAR_VISITA` | Inspector | Inspector asignado → visita en coordinación |
 | `REPROGRAMAR_VISITA` | Inspector | Visita en coordinación → reprogramada |
 | `MARCAR_NO_UBICADO_VISITA` | Inspector | Registra que no fue ubicado para la visita |

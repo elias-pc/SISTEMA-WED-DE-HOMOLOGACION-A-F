@@ -75,3 +75,15 @@ describe('motor formal de homologación', () => {
     expect(validateTransition({ step: 9, status: 'HOMOLOGADO', substatus: 'VIGENTE' }, 'MARCAR_VENCIDO', 'administradora').ok).toBe(false);
   });
 });
+
+describe('asignación de inspector desde «Formulario enviado»', () => {
+  const sent = { step: 5 as const, status: 'INSCRITO' as const, substatus: 'FORMULARIO_ENVIADO' as const };
+  it('el jefe de inspectores puede asignar apenas se envía el formulario', () => {
+    expect(availableTransitions(sent, 'jefe_inspecciones').map((item) => item.code)).toContain('ASIGNAR_INSPECTOR');
+    expect(validateTransition(sent, 'ASIGNAR_INSPECTOR', 'jefe_inspecciones', { inspectorId: 'inspector-decal' }).ok).toBe(true);
+  });
+  it('la ejecutiva no puede asignar inspector', () => {
+    expect(availableTransitions(sent, 'ejecutiva').map((item) => item.code)).not.toContain('ASIGNAR_INSPECTOR');
+    expect(validateTransition(sent, 'ASIGNAR_INSPECTOR', 'ejecutiva', { inspectorId: 'inspector-decal' }).ok).toBe(false);
+  });
+});
