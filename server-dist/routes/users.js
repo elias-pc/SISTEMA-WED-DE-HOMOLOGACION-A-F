@@ -86,13 +86,13 @@ usersRouter.post('/', requireRoles('administradora'), validateBody(schema), asyn
 });
 // Usuarios internos de A&F (ejecutivas, jefes de inspectores e inspectores): solo el administrador los gestiona.
 usersRouter.get('/internal', requireRoles('administradora'), async (_request, response) => {
-    const result = await pool.query(`SELECT u.id,u.name,u.email,u.role,u.active,
+    const result = await pool.query(`SELECT u.id,u.name,u.email,u.role,u.active,u.portfolio_capacity AS capacidad,
   COALESCE(array_agg(uc.company_id ORDER BY uc.company_id) FILTER (WHERE uc.company_id IS NOT NULL),'{}') AS "empresaIds"
   FROM users u LEFT JOIN user_companies uc ON uc.user_id=u.id
   WHERE u.role = ANY($1::user_role[]) GROUP BY u.id ORDER BY u.active DESC,u.role,u.name`, [internalRoles]);
     response.json({ users: result.rows });
 });
-const updateSchema = z.object({ name: z.string().trim().min(2).max(120).optional(), email: z.string().trim().email().optional(), active: z.boolean().optional() }).refine((value) => Object.keys(value).length > 0, 'No hay cambios.');
+const updateSchema = z.object({ name: z.string().trim().min(2).max(120).optional(), email: z.string().trim().email().optional(), active: z.boolean().optional(), capacidad: z.number().int().min(1).max(1000).nullable().optional() }).refine((value) => Object.keys(value).length > 0, 'No hay cambios.');
 usersRouter.patch('/:userId', requireRoles('administradora'), validateBody(updateSchema), async (request, response) => {
     const userId = String(request.params.userId), body = request.body;
     const target = await pool.query('SELECT id,role,active FROM users WHERE id=$1', [userId]);
@@ -111,7 +111,7 @@ usersRouter.patch('/:userId', requireRoles('administradora'), validateBody(updat
         if (taken.rowCount)
             return response.status(409).json({ error: 'Ese correo ya está en uso.' });
     }
-    const result = await pool.query(`UPDATE users SET name=COALESCE($2,name),email=COALESCE(lower($3),email),active=COALESCE($4,active) WHERE id=$1 RETURNING id,name,email,role,active`, [userId, body.name ?? null, body.email ?? null, body.active ?? null]);
+    const result = await pool.query(`UPDATE users SET name=COALESCE($2,name),email=COALESCE(lower($3),email),active=COALESCE($4,active),portfolio_capacity=CASE WHEN $5::boolean THEN $6::integer ELSE portfolio_capacity END WHERE id=$1 RETURNING id,name,email,role,active,portfolio_capacity AS capacidad`, [userId, body.name ?? null, body.email ?? null, body.active ?? null, body.capacidad !== undefined, body.capacidad ?? null]);
     if (body.active === false)
         await pool.query('DELETE FROM sessions WHERE user_id=$1', [userId]);
     response.json({ user: result.rows[0] });

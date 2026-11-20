@@ -260,14 +260,30 @@ function assignMemoryPlan(plan, actor, reason) {
         const provider = providers.find(candidate => candidate.id === item.providerId);
         if (!provider)
             continue;
+        const records = dossier(provider.id);
+        // Cada proveedor tiene una sola ejecutiva: se libera la anterior al reasignar.
+        const others = activeExecutiveIds(provider).filter(id => id !== item.executiveId);
+        if (others.length) {
+            records.assignments.forEach(entry => { if (entry.assignment_role === 'ejecutiva' && !entry.released_at && others.includes(String(entry.assigned_user_id))) {
+                entry.released_at = now;
+                entry.release_reason = reason;
+                entry.released_by_user_id = actor.id;
+            } });
+            setActiveExecutiveIds(provider, activeExecutiveIds(provider).filter(id => id === item.executiveId));
+        }
         if (activeExecutiveIds(provider).includes(item.executiveId)) {
-            unchanged += 1;
+            if (others.length)
+                reassigned += 1;
+            else
+                unchanged += 1;
             continue;
         }
-        const records = dossier(provider.id);
-        assigned += 1;
+        if (others.length)
+            reassigned += 1;
+        else
+            assigned += 1;
         records.assignments.unshift({ id: randomUUID(), provider_id: provider.id, assignment_role: 'ejecutiva', assigned_user_id: item.executiveId, assigned_by_user_id: actor.id, assigned_at: now, released_at: null, reason });
-        setActiveExecutiveIds(provider, [...activeExecutiveIds(provider), item.executiveId]);
+        setActiveExecutiveIds(provider, [item.executiveId]);
         if (provider.flujo?.subestado === 'REGISTRADO') {
             const from = memoryState(provider), to = { step: 3, status: 'PENDIENTE_INSCRIPCION', substatus: 'ASIGNADO_EJECUTIVA' };
             workflowHistory.set(provider.id, [{ id: randomUUID(), transition_code: 'ASIGNAR_EJECUTIVA', from_step: from.step, from_status: from.status, from_substatus: from.substatus, to_step: to.step, to_status: to.status, to_substatus: to.substatus, actor_user_id: actor.id, actor_role: actor.role, reason, metadata: { ejecutivaId: item.executiveId, origen: 'cartera' }, created_at: now }, ...(workflowHistory.get(provider.id) || [])]);
@@ -336,7 +352,7 @@ memoryRouter.get('/assignments/portfolio', requireUser, (request, response) => {
     const processProviders = providers.filter(item => item.procesoId === process.id);
     const executives = users.filter(item => item.role === 'ejecutiva' && item.empresaIds.some(id => id === process.empresaId));
     const history = processProviders.flatMap(provider => dossier(provider.id).assignments.filter(item => item.assignment_role === 'ejecutiva').map(item => ({ ...item, provider_name: provider.razonSocial, assigned_user_name: users.find(candidate => candidate.id === item.assigned_user_id)?.name || '', assigned_by_name: users.find(candidate => candidate.id === item.assigned_by_user_id)?.name || '', released_by_name: users.find(candidate => candidate.id === item.released_by_user_id)?.name || '' }))).sort((a, b) => String(b.assigned_at).localeCompare(String(a.assigned_at)));
-    response.json({ executives: executives.map(item => ({ id: item.id, name: item.name, email: item.email, activeCount: processProviders.filter(provider => activeExecutiveIds(provider).includes(item.id)).length })), unassignedCount: processProviders.filter(item => activeExecutiveIds(item).length === 0).length, providers: processProviders.map(item => ({ id: item.id, legal_name: item.razonSocial, tax_id: item.ruc, assignedExecutives: activeExecutiveIds(item).map(id => ({ id, name: executives.find(executive => executive.id === id)?.name || id })), current_step: item.flujo.paso, workflow_status: item.flujo.estado, workflow_substatus: item.flujo.subestado, updated_at: item.fechaRegistro })), history: history.slice(0, 200) });
+    response.json({ executives: executives.map(item => ({ id: item.id, name: item.name, email: item.email, activeCount: processProviders.filter(provider => activeExecutiveIds(provider).includes(item.id)).length, capacity: Number(item.capacidad || 40), contactCount: processProviders.filter(provider => activeExecutiveIds(provider).includes(item.id) && provider.flujo?.estado === 'PENDIENTE_INSCRIPCION').length, formCount: processProviders.filter(provider => activeExecutiveIds(provider).includes(item.id) && provider.flujo?.estado === 'INSCRITO').length, homologatedCount: processProviders.filter(provider => activeExecutiveIds(provider).includes(item.id) && provider.flujo?.estado === 'HOMOLOGADO').length })), unassignedCount: processProviders.filter(item => activeExecutiveIds(item).length === 0).length, providers: processProviders.map(item => ({ id: item.id, legal_name: item.razonSocial, tax_id: item.ruc, assignedExecutives: activeExecutiveIds(item).map(id => ({ id, name: executives.find(executive => executive.id === id)?.name || id })), current_step: item.flujo.paso, workflow_status: item.flujo.estado, workflow_substatus: item.flujo.subestado, updated_at: item.fechaRegistro })), history: history.slice(0, 200) });
 });
 memoryRouter.post('/assignments/assign', requireUser, (request, response) => {
     const user = response.locals.user;
@@ -511,7 +527,8 @@ memoryRouter.patch('/users/:userId', requireUser, (request, response) => { const
     return response.status(404).json({ error: 'Usuario interno no encontrado.' }); const body = request.body || {}; if (typeof body.name === 'string' && body.name.trim())
     target.name = body.name.trim(); if (typeof body.email === 'string' && body.email.trim())
     target.email = body.email.trim().toLowerCase(); if (typeof body.active === 'boolean')
-    target.active = body.active; const { passwordHash: _, ...safe } = target; response.json({ user: { ...safe, active: target.active !== false } }); });
+    target.active = body.active; if (body.capacidad === null || typeof body.capacidad === 'number')
+    target.capacidad = body.capacidad; const { passwordHash: _, ...safe } = target; response.json({ user: { ...safe, active: target.active !== false } }); });
 memoryRouter.post('/users/:userId/password', requireUser, (request, response) => { const user = response.locals.user; if (user.role !== 'administradora')
     return response.status(403).json({ error: 'No tienes permiso.' }); const target = users.find(item => item.id === String(request.params.userId) && memoryInternalRoles.includes(item.role)); const password = String(request.body?.password || ''); if (!target)
     return response.status(404).json({ error: 'Usuario interno no encontrado.' }); if (password.length < 8)

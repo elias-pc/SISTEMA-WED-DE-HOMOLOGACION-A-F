@@ -104,7 +104,7 @@ function UsuariosPage() {
         <div style={{ overflowX: 'auto', marginTop: '1.5rem' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '880px' }}>
             <thead>
-              <tr>{['Nombre', 'Correo', 'Rol', 'Empresas', 'Estado', 'Acciones'].map((header) => <th key={header} style={{ textAlign: 'left', padding: '0.9rem 0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{header}</th>)}</tr>
+              <tr>{['Nombre', 'Correo', 'Rol', 'Empresas', 'Capacidad', 'Estado', 'Acciones'].map((header) => <th key={header} style={{ textAlign: 'left', padding: '0.9rem 0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{header}</th>)}</tr>
             </thead>
             <tbody>
               {visibleUsers.map((user) => (
@@ -113,6 +113,7 @@ function UsuariosPage() {
                   <td style={{ padding: '0.85rem 0.75rem' }}>{user.email}</td>
                   <td style={{ padding: '0.85rem 0.75rem' }}><span style={{ display: 'inline-block', padding: '.2rem .6rem', borderRadius: '999px', border: `1px solid ${roleColor[user.role] || '#64748b'}`, color: roleColor[user.role] || '#64748b', fontSize: '.8rem', fontWeight: 700, whiteSpace: 'nowrap' }}>{roleLabel(user.role)}</span></td>
                   <td style={{ padding: '0.85rem 0.75rem' }}>{user.empresaIds.length ? user.empresaIds.map(companyName).join(', ') : '—'}</td>
+                  <td style={{ padding: '0.85rem 0.75rem', whiteSpace: 'nowrap' }}>{user.role === 'ejecutiva' ? `${user.capacidad ?? 40} proveedores` : '—'}</td>
                   <td style={{ padding: '0.85rem 0.75rem', whiteSpace: 'nowrap' }}>{user.active === false ? 'Inactivo' : 'Activo'}</td>
                   <td style={{ padding: '0.6rem 0.75rem' }}>
                     <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap' }}>
@@ -137,6 +138,7 @@ function EditUserModal({ user, companies, onClose, onSaved }: { user: AuthUser; 
   const [email, setEmail] = useState(user.email);
   const [empresaIds, setEmpresaIds] = useState<string[]>(user.empresaIds);
   const [password, setPassword] = useState('');
+  const [capacity, setCapacity] = useState(String(user.capacidad ?? 40));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -151,7 +153,10 @@ function EditUserModal({ user, companies, onClose, onSaved }: { user: AuthUser; 
     if (!empresaIds.length) { setError('Marca al menos una empresa.'); return; }
     setBusy(true); setError('');
     try {
-      if (name.trim() !== user.name || email.trim().toLowerCase() !== user.email) await api.updateUser(user.id, { name: name.trim(), email: email.trim().toLowerCase() });
+      const capacityValue = Number(capacity);
+      if (user.role === 'ejecutiva' && (!Number.isInteger(capacityValue) || capacityValue < 1 || capacityValue > 1000)) { setError('La capacidad debe ser un número entero entre 1 y 1000.'); setBusy(false); return; }
+      const capacityChanged = user.role === 'ejecutiva' && capacityValue !== (user.capacidad ?? 40);
+      if (name.trim() !== user.name || email.trim().toLowerCase() !== user.email || capacityChanged) await api.updateUser(user.id, { name: name.trim(), email: email.trim().toLowerCase(), ...(capacityChanged ? { capacidad: capacityValue } : {}) });
       const companiesChanged = empresaIds.length !== user.empresaIds.length || empresaIds.some((id) => !user.empresaIds.includes(id));
       if (companiesChanged) await api.updateExecutiveCompanies(user.id, empresaIds);
       if (password) await api.resetUserPassword(user.id, password);
@@ -170,6 +175,7 @@ function EditUserModal({ user, companies, onClose, onSaved }: { user: AuthUser; 
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <label style={{ display: 'grid', gap: '.35rem', fontWeight: 600, fontSize: '.88rem' }}>Nombre completo<input id="editar-nombre" className="search-input" style={{ marginTop: 0 }} value={name} onChange={(event) => setName(event.target.value)} minLength={2} required /></label>
         <label style={{ display: 'grid', gap: '.35rem', fontWeight: 600, fontSize: '.88rem' }}>Correo electrónico<input id="editar-correo" className="search-input" style={{ marginTop: 0 }} type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
+        {user.role === 'ejecutiva' ? <label style={{ display: 'grid', gap: '.35rem', fontWeight: 600, fontSize: '.88rem' }}>Capacidad de cartera (proveedores)<input id="editar-capacidad" className="search-input" style={{ marginTop: 0 }} type="number" min={1} max={1000} value={capacity} onChange={(event) => setCapacity(event.target.value)} required /><small className="secondary-text" style={{ fontWeight: 400 }}>Cuántos proveedores puede atender. Se usa para la barra de carga en «Cartera de ejecutivas».</small></label> : null}
         <fieldset style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem 1.2rem', margin: 0, padding: '.6rem .8rem .8rem', border: '1px solid var(--color-border)', borderRadius: '.7rem' }}>
           <legend style={{ padding: '0 .3rem', fontSize: '.85rem', fontWeight: 600 }}>Empresas que atiende</legend>
           {companies.map((company) => <label key={company.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem' }}><input type="checkbox" checked={empresaIds.includes(company.id)} onChange={() => setEmpresaIds((current) => current.includes(company.id) ? current.filter((id) => id !== company.id) : [...current, company.id])} />{company.nombreComercial}</label>)}

@@ -116,7 +116,7 @@ export interface EstadoProveedorReporte {
 }
 export interface ReporteEstadoProveedores { rows:EstadoProveedorReporte[] }
 
-export interface CarteraEjecutivaResumen { id:string; name:string; email:string; activeCount:number }
+export interface CarteraEjecutivaResumen { id:string; name:string; email:string; activeCount:number; capacity?:number; contactCount?:number; formCount?:number; homologatedCount?:number }
 export interface ProveedorCartera {
   id:string; legal_name:string; tax_id:string; assignedExecutives:Array<{id:string;name:string}>;
   current_step:number; workflow_status:string; workflow_substatus:string; updated_at:string;
@@ -151,6 +151,7 @@ export interface AuthUser {
   role: UserRole;
   empresaIds: string[];
   active?: boolean;
+  capacidad?: number | null;
 }
 
 export type EmpresaEstado = 'Activa' | 'Inactiva' | 'Archivada';

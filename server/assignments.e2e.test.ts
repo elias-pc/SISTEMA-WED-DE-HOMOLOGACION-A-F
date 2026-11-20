@@ -44,14 +44,13 @@ describe('cartera e historial de ejecutivas en modo local', () => {
     const supervisor = await login('supervisor@af.com', 'super20226ayf');
     const reassigned = await supervisor.post('/api/assignments/assign').send({ processId: 'proc-decal-2026', providerIds: [providerIds[0]], executiveId: 'eje-decal-2', reason: 'Rebalanceo por carga' });
     expect(reassigned.status).toBe(200);
-    expect(reassigned.body.assigned).toBe(1);
+    // Reasignar mueve el proveedor: la nueva ejecutiva lo recibe y la anterior deja de tenerlo.
+    expect(reassigned.body.reassigned).toBe(1);
+    expect(reassigned.body.assigned).toBe(0);
     const portfolioAfterAssignment = await admin.get('/api/assignments/portfolio').query({ processId: 'proc-decal-2026' });
-    const sharedProvider = portfolioAfterAssignment.body.providers.find((provider: { id: string }) => provider.id === providerIds[0]);
-    expect(sharedProvider.assignedExecutives).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'eje-decal' }),
-      expect.objectContaining({ id: 'eje-decal-2' }),
-    ]));
-    expect((await executiveOne.get(`/api/providers/${providerIds[0]}/workflow`)).status).toBe(200);
+    const movedProvider = portfolioAfterAssignment.body.providers.find((provider: { id: string }) => provider.id === providerIds[0]);
+    expect(movedProvider.assignedExecutives).toEqual([expect.objectContaining({ id: 'eje-decal-2' })]);
+    expect((await executiveOne.get(`/api/providers/${providerIds[0]}/workflow`)).status).toBe(403);
     const executiveTwo = await login('ejecutiva2@decal.com', 'Ejecutiva123');
     expect((await executiveTwo.get(`/api/providers/${providerIds[0]}/workflow`)).status).toBe(200);
     const executiveTwoPortfolio = await executiveTwo.get('/api/providers/my-portfolio').query({ processId: 'proc-decal-2026' });

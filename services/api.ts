@@ -30,7 +30,7 @@ export const api={
   importProviders:(payload:{empresaId:string;procesoId:string;fileName:string;contentBase64:string})=>request<ImportPreview>('/providers/import',{method:'POST',body:JSON.stringify(payload)}),
   users:(empresaId:string)=>request<{users:AuthUser[]}>(`/users?empresaId=${encodeURIComponent(empresaId)}`),
   internalUsers:()=>request<{users:AuthUser[]}>('/users/internal'),
-  updateUser:(userId:string,changes:{name?:string;email?:string;active?:boolean})=>request<{user:AuthUser}>(`/users/${encodeURIComponent(userId)}`,{method:'PATCH',body:JSON.stringify(changes)}),
+  updateUser:(userId:string,changes:{name?:string;email?:string;active?:boolean;capacidad?:number|null})=>request<{user:AuthUser}>(`/users/${encodeURIComponent(userId)}`,{method:'PATCH',body:JSON.stringify(changes)}),
   resetUserPassword:(userId:string,password:string)=>request<{ok:boolean}>(`/users/${encodeURIComponent(userId)}/password`,{method:'POST',body:JSON.stringify({password})}),
   executives:()=>request<{users:AuthUser[]}>('/users/executives'),
   updateExecutiveCompanies:(userId:string,empresaIds:string[])=>request<{user:AuthUser}>(`/users/${encodeURIComponent(userId)}/companies`,{method:'PATCH',body:JSON.stringify({empresaIds})}),

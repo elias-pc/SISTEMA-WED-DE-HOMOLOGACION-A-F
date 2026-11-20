@@ -47,12 +47,15 @@ assignmentsRouter.get('/portfolio', async (request, response) => {
         if ('error' in scope)
             return response.status(scope.status).json({ error: scope.error });
         const [executives, providers, history] = await Promise.all([
-            client.query(`SELECT u.id,u.name,u.email,COUNT(p.id)::int AS active_count
+            client.query(`SELECT u.id,u.name,u.email,COUNT(p.id)::int AS active_count,u.portfolio_capacity,
+        COUNT(p.id) FILTER (WHERE p.workflow_status='PENDIENTE_INSCRIPCION')::int AS contact_count,
+        COUNT(p.id) FILTER (WHERE p.workflow_status='INSCRITO')::int AS form_count,
+        COUNT(p.id) FILTER (WHERE p.workflow_status='HOMOLOGADO')::int AS homologated_count
         FROM users u JOIN user_companies uc ON uc.user_id=u.id
         LEFT JOIN provider_assignments a ON a.assigned_user_id=u.id AND a.assignment_role='ejecutiva' AND a.released_at IS NULL
         LEFT JOIN providers p ON p.id=a.provider_id AND p.process_id=$1
         WHERE uc.company_id=$2 AND u.role='ejecutiva' AND u.active=true
-        GROUP BY u.id,u.name,u.email ORDER BY u.name`, [processId.data, scope.companyId]),
+        GROUP BY u.id,u.name,u.email,u.portfolio_capacity ORDER BY u.name`, [processId.data, scope.companyId]),
             client.query(`SELECT p.id,p.legal_name,p.tax_id,
         COALESCE(json_agg(json_build_object('id',a.assigned_user_id,'name',u.name) ORDER BY u.name)
           FILTER (WHERE a.id IS NOT NULL),'[]'::json) AS assigned_executives,
@@ -72,7 +75,7 @@ assignmentsRouter.get('/portfolio', async (request, response) => {
         ORDER BY a.assigned_at DESC LIMIT 200`, [processId.data]),
         ]);
         response.json({
-            executives: executives.rows.map((row) => ({ id: row.id, name: row.name, email: row.email, activeCount: row.active_count })),
+            executives: executives.rows.map((row) => ({ id: row.id, name: row.name, email: row.email, activeCount: row.active_count, capacity: row.portfolio_capacity ?? 40, contactCount: row.contact_count, formCount: row.form_count, homologatedCount: row.homologated_count })),
             unassignedCount: providers.rows.filter((row) => !row.assigned_executives?.length).length,
             providers: providers.rows.map(({ assigned_executives, ...provider }) => ({
                 ...provider,
@@ -186,11 +189,26 @@ async function applyPlan(user, processId, plan, reason) {
         for (const item of plan) {
             const provider = providers.get(item.providerId);
             const active = activeByProvider.get(item.providerId) || new Set();
+            // Cada proveedor tiene una sola ejecutiva: al asignarlo a otra, se libera la anterior (reasignación con historial).
+            const others = [...active].filter((id) => id !== item.executiveId);
+            if (others.length) {
+                await client.query(`UPDATE provider_assignments SET released_at=now(),released_by_user_id=$1,release_reason=$2
+          WHERE provider_id=$3 AND assignment_role='ejecutiva' AND released_at IS NULL AND assigned_user_id=ANY($4::text[])`, [user.id, reason, item.providerId, others]);
+                others.forEach((id) => active.delete(id));
+            }
             if (active.has(item.executiveId)) {
-                unchanged += 1;
+                if (others.length) {
+                    reassigned += 1;
+                    await client.query('UPDATE providers SET assigned_executive_id=$1,updated_at=now() WHERE id=$2', [item.executiveId, item.providerId]);
+                }
+                else
+                    unchanged += 1;
                 continue;
             }
-            assigned += 1;
+            if (others.length)
+                reassigned += 1;
+            else
+                assigned += 1;
             await client.query(`INSERT INTO provider_assignments(id,provider_id,assignment_role,assigned_user_id,assigned_by_user_id,reason)
         VALUES($1,$2,'ejecutiva',$3,$4,$5)`, [randomUUID(), item.providerId, item.executiveId, user.id, reason]);
             active.add(item.executiveId);
@@ -203,7 +221,7 @@ async function applyPlan(user, processId, plan, reason) {
           VALUES($1,$2,'ASIGNAR_EJECUTIVA',$3,$4,$5,3,'PENDIENTE_INSCRIPCION','ASIGNADO_EJECUTIVA',$6,$7,$8,$9::jsonb)`, [randomUUID(), item.providerId, provider.current_step, provider.workflow_status, provider.workflow_substatus, user.id, user.role, reason, JSON.stringify({ ejecutivaId: item.executiveId, origen: 'cartera' })]);
             }
             else {
-                await client.query(`UPDATE providers SET assigned_executive_id=COALESCE(assigned_executive_id,$1),updated_at=now() WHERE id=$2`, [item.executiveId, item.providerId]);
+                await client.query(`UPDATE providers SET assigned_executive_id=$1,updated_at=now() WHERE id=$2`, [item.executiveId, item.providerId]);
             }
         }
         await client.query('COMMIT');
