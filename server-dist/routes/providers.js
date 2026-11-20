@@ -57,6 +57,86 @@ providersRouter.post('/', requireRoles('administradora'), validateBody(createSch
         await pool.query('INSERT INTO provider_attributes(provider_id,attribute_key,attribute_value) VALUES($1,$2,$3)', [result.rows[0].id, key, value]);
     response.status(201).json({ provider: mapProvider(result.rows[0], b.atributos) });
 });
+// Corrección de datos del proveedor: la ejecutiva corrige los datos de contacto de sus proveedores asignados;
+// solo el administrador puede cambiar además el RUC y la razón social. Cada cambio queda registrado.
+const editableContactFields = { personaContacto: 'contact_name', telefonos: 'phones', email: 'email', direccion: 'address', departamento: 'department', distrito: 'district', actividadPrincipal: 'main_activity' };
+const editableAdminFields = { ruc: 'tax_id', razonSocial: 'legal_name' };
+const updateProviderSchema = z.object({
+    ruc: z.string().trim().regex(/^\d{11}$/, 'El RUC debe tener 11 dígitos.').optional(),
+    razonSocial: z.string().trim().min(2).max(200).optional(),
+    personaContacto: z.string().trim().min(2).max(160).optional(),
+    telefonos: z.string().trim().min(3).max(120).optional(),
+    email: z.string().trim().email('Correo electrónico no válido.').max(160).optional(),
+    direccion: z.string().trim().min(2).max(240).optional(),
+    departamento: z.string().trim().min(2).max(80).optional(),
+    distrito: z.string().trim().min(2).max(80).optional(),
+    actividadPrincipal: z.string().trim().min(2).max(200).optional(),
+    atributos: z.record(z.string().regex(/^filtro_\d$/), z.string().trim().max(120)).optional(),
+}).strict();
+providersRouter.patch('/:id', requireRoles('administradora', 'ejecutiva'), validateBody(updateProviderSchema), async (request, response) => {
+    const user = request.user;
+    const body = request.body;
+    if (user.role !== 'administradora' && (body.ruc !== undefined || body.razonSocial !== undefined))
+        return response.status(403).json({ error: 'Solo el administrador puede cambiar el RUC o la razón social.' });
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const found = await client.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1 FOR UPDATE OF p`, [request.params.id]);
+        if (!found.rowCount) {
+            await client.query('ROLLBACK');
+            return response.status(404).json({ error: 'Proveedor no encontrado.' });
+        }
+        const row = found.rows[0];
+        if (!await canAccessProvider(user, row, client)) {
+            await client.query('ROLLBACK');
+            return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' });
+        }
+        if (body.ruc && body.ruc !== row.tax_id) {
+            const duplicate = await client.query('SELECT 1 FROM providers WHERE process_id=$1 AND tax_id=$2 AND id<>$3', [row.process_id, body.ruc, row.id]);
+            if (duplicate.rowCount) {
+                await client.query('ROLLBACK');
+                return response.status(409).json({ error: 'Ya existe otro proveedor con ese RUC en este proceso.' });
+            }
+        }
+        const columns = { ...editableContactFields, ...(user.role === 'administradora' ? editableAdminFields : {}) };
+        const changes = [];
+        for (const [field, column] of Object.entries(columns)) {
+            const value = body[field];
+            if (typeof value === 'string' && value !== String(row[column] ?? ''))
+                changes.push({ field, column, oldValue: row[column] == null ? null : String(row[column]), newValue: value });
+        }
+        const currentAttributes = Object.fromEntries((await client.query('SELECT attribute_key,attribute_value FROM provider_attributes WHERE provider_id=$1', [row.id])).rows.map((item) => [item.attribute_key, item.attribute_value]));
+        for (const [key, value] of Object.entries(body.atributos || {}))
+            if (value !== (currentAttributes[key] ?? ''))
+                changes.push({ field: key, oldValue: currentAttributes[key] ?? null, newValue: value });
+        if (!changes.length) {
+            await client.query('ROLLBACK');
+            return response.json({ provider: mapProvider(row, currentAttributes), cambios: 0 });
+        }
+        const columnChanges = changes.filter((change) => change.column);
+        if (columnChanges.length)
+            await client.query(`UPDATE providers SET ${columnChanges.map((change, index) => `${change.column}=$${index + 2}`).join(',')},updated_at=now() WHERE id=$1`, [row.id, ...columnChanges.map((change) => change.newValue)]);
+        for (const change of changes.filter((item) => !item.column)) {
+            if (change.newValue)
+                await client.query('INSERT INTO provider_attributes(provider_id,attribute_key,attribute_value) VALUES($1,$2,$3) ON CONFLICT(provider_id,attribute_key) DO UPDATE SET attribute_value=EXCLUDED.attribute_value', [row.id, change.field, change.newValue]);
+            else
+                await client.query('DELETE FROM provider_attributes WHERE provider_id=$1 AND attribute_key=$2', [row.id, change.field]);
+        }
+        for (const change of changes)
+            await client.query('INSERT INTO provider_data_changes(id,provider_id,changed_by_user_id,changed_by_role,field,old_value,new_value) VALUES($1,$2,$3,$4,$5,$6,$7)', [randomUUID(), row.id, user.id, user.role, change.field, change.oldValue, change.newValue]);
+        const updated = await client.query('SELECT * FROM providers WHERE id=$1', [row.id]);
+        const attributes = Object.fromEntries((await client.query('SELECT attribute_key,attribute_value FROM provider_attributes WHERE provider_id=$1', [row.id])).rows.map((item) => [item.attribute_key, item.attribute_value]));
+        await client.query('COMMIT');
+        response.json({ provider: mapProvider(updated.rows[0], attributes), cambios: changes.length });
+    }
+    catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    }
+    finally {
+        client.release();
+    }
+});
 providersRouter.patch('/:id/status', (_request, response) => response.status(410).json({ error: 'El cambio libre de estado fue retirado. Utiliza una transición válida del flujo.' }));
 const transitionSchema = z.object({
     transicion: z.enum(transitionCodes),
@@ -153,7 +233,9 @@ providersRouter.get('/:id/workflow', async (request, response) => {
         return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' });
     const history = await pool.query(`SELECT id,transition_code,from_step,from_status,from_substatus,to_step,to_status,to_substatus,actor_user_id,actor_role,reason,metadata,created_at FROM provider_status_history WHERE provider_id=$1 ORDER BY created_at DESC`, [request.params.id]);
     const state = workflowStateFromRow(row);
-    response.json({ provider: mapProvider(row), transicionesDisponibles: availableTransitions(state, user.role).map(publicTransition), catalogoEstados: statusCatalog, historial: history.rows });
+    const attributes = Object.fromEntries((await pool.query('SELECT attribute_key,attribute_value FROM provider_attributes WHERE provider_id=$1', [request.params.id])).rows.map((item) => [item.attribute_key, item.attribute_value]));
+    const dataChanges = await pool.query(`SELECT c.id,c.field,c.old_value,c.new_value,c.changed_by_role,c.created_at,u.name AS changed_by_name FROM provider_data_changes c LEFT JOIN users u ON u.id=c.changed_by_user_id WHERE c.provider_id=$1 ORDER BY c.created_at DESC`, [request.params.id]);
+    response.json({ provider: mapProvider(row, attributes), transicionesDisponibles: availableTransitions(state, user.role).map(publicTransition), catalogoEstados: statusCatalog, historial: history.rows, cambiosDatos: dataChanges.rows });
 });
 providersRouter.get('/:id/dossier', async (request, response) => {
     const user = request.user;

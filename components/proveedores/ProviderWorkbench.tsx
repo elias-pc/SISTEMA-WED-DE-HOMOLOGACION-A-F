@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { ApiError, api } from '../../services/api';
-import type { AuthUser, ConfiguracionHomologacion, ExpedienteProveedor, HistorialFlujo, Proveedor, TransicionDisponible } from '../../types';
+import type { AuthUser, CambioDatoProveedor, ConfiguracionHomologacion, ExpedienteProveedor, HistorialFlujo, Proveedor, TransicionDisponible } from '../../types';
+import { useAuth } from '../../src/auth/AuthContext';
+import ProviderDataEditor from './ProviderDataEditor';
 
 interface Props {
   provider: Proveedor;
@@ -36,13 +38,16 @@ function addDays(dateValue: string, days: number) {
 }
 
 function ProviderWorkbench({ provider, companyId, configuration, onChanged, onClose }: Props) {
-  const [workflow, setWorkflow] = useState<{ provider: Proveedor; transicionesDisponibles: TransicionDisponible[]; historial: HistorialFlujo[] } | null>(null);
+  const [workflow, setWorkflow] = useState<{ provider: Proveedor; transicionesDisponibles: TransicionDisponible[]; historial: HistorialFlujo[]; cambiosDatos?: CambioDatoProveedor[] } | null>(null);
   const [dossier, setDossier] = useState<ExpedienteProveedor | null>(null);
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [selectedTransition, setSelectedTransition] = useState<TransicionDisponible | null>(null);
   const [fields, setFields] = useState<Record<string, string | boolean>>({});
   const [moduleScores, setModuleScores] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
+  const { user } = useAuth();
+  const canEditData = user?.role === 'administradora' || user?.role === 'ejecutiva';
+  const [editingData, setEditingData] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -114,7 +119,8 @@ function ProviderWorkbench({ provider, companyId, configuration, onChanged, onCl
   return (
     <div className="deliverables-modal-backdrop" role="presentation" onMouseDown={onClose}>
     <section className="card workbench" role="dialog" aria-modal="true" aria-label={`Expediente de ${provider.razonSocial}`} onMouseDown={(event) => event.stopPropagation()} style={{ width: 'min(1180px, 100%)', maxHeight: 'calc(100vh - 2rem)', margin: 0, overflowY: 'auto', overflowX: 'hidden', boxSizing: 'border-box' }}>
-      <div className="section-heading" style={{ position: 'sticky', top: '-1.5rem', zIndex: 2, margin: '-1.5rem -1.5rem 0', padding: '1.25rem 1.5rem 1rem', background: '#fff', borderBottom: '1px solid var(--color-border)' }}><div><p className="context-label">Expediente operativo</p><h3>{provider.razonSocial}</h3><p className="secondary-text">RUC {provider.ruc} · Paso {workflow?.provider.flujo?.paso ?? provider.flujo?.paso ?? '—'} · {workflow?.provider.flujo?.subestado ?? provider.flujo?.subestado ?? 'Sin estado'}</p></div><button className="btn-secondary" type="button" onClick={onClose}>Cerrar</button></div>
+      <div className="section-heading" style={{ position: 'sticky', top: '-1.5rem', zIndex: 2, margin: '-1.5rem -1.5rem 0', padding: '1.25rem 1.5rem 1rem', background: '#fff', borderBottom: '1px solid var(--color-border)' }}><div><p className="context-label">Expediente operativo</p><h3>{provider.razonSocial}</h3><p className="secondary-text">RUC {provider.ruc} · Paso {workflow?.provider.flujo?.paso ?? provider.flujo?.paso ?? '—'} · {workflow?.provider.flujo?.subestado ?? provider.flujo?.subestado ?? 'Sin estado'}</p></div><div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>{canEditData && !editingData ? <button className="btn-primary" type="button" onClick={() => { setEditingData(true); setMessage(''); }}>Editar datos del proveedor</button> : null}<button className="btn-secondary" type="button" onClick={onClose}>Cerrar</button></div></div>
+      {editingData && workflow ? <ProviderDataEditor provider={workflow.provider} filterLabel={configuration.filters[0] || 'Filtro'} canEditIdentity={user?.role === 'administradora'} onCancel={() => setEditingData(false)} onSaved={(updated, changes) => { setEditingData(false); onChanged(updated); void load(); setMessage(changes ? `Datos del proveedor actualizados (${changes} cambio(s) registrados).` : 'No había cambios que guardar.'); }} /> : null}
       {message ? <p className={message.includes('No se pudo') ? 'form-error' : 'success-message'} role="status">{message}</p> : null}
       <div className="workbench-grid">
         <section><h4>Acciones disponibles</h4><div className="transition-list">{workflow?.transicionesDisponibles.length ? workflow.transicionesDisponibles.map((transition) => <button key={transition.codigo} type="button" className="btn-secondary" onClick={() => pickTransition(transition)}>{transition.etiqueta}</button>) : <p className="secondary-text">No tienes transiciones disponibles en este estado.</p>}</div>
@@ -123,6 +129,7 @@ function ProviderWorkbench({ provider, companyId, configuration, onChanged, onCl
         <section><h4>Expediente</h4><div className="dossier-list"><p><strong>Pagos:</strong> {dossier?.payments.length || 0}</p><p><strong>Formularios:</strong> {dossier?.forms.length || 0}</p><p><strong>Visitas:</strong> {dossier?.inspections.length || 0}</p><p><strong>Certificados:</strong> {dossier?.certificates.length || 0}</p></div><p className="secondary-text">Los entregables se suben y consultan en «Status de proveedores» → «Entregables».</p>{dossier?.documents.map((document) => <a className="document-link" key={document.id} href={`/api/providers/${provider.id}/documents/${document.id}/content`} target="_blank" rel="noreferrer">{document.original_name} · {Math.ceil(document.byte_size / 1024)} KB</a>)}</section>
         <section><h4>WhatsApp preparado</h4><p className="secondary-text">No se envían mensajes hasta configurar Meta y habilitar el proveedor.</p><form className="transition-form" onSubmit={saveWhatsAppPreferences}><label>Teléfono WhatsApp<input name="phone" defaultValue={dossier?.contactPreferences?.whatsapp_phone || ''} placeholder="51999888777" /></label><label>Origen del consentimiento<input name="source" defaultValue={dossier?.contactPreferences?.whatsapp_opt_in_source || ''} placeholder="Formulario firmado" /></label><label className="checkbox-field"><input name="optIn" type="checkbox" defaultChecked={Boolean(dossier?.contactPreferences?.whatsapp_opt_in)} /> Consentimiento para WhatsApp</label><button className="btn-secondary" disabled={busy}>Guardar preferencia</button></form><p className="secondary-text">Eventos preparados: {dossier?.notifications.length || 0}; no se han enviado a Meta.</p></section>
       </div>
+      {workflow?.cambiosDatos?.length ? <details className="history-panel"><summary>Ver correcciones de datos ({workflow.cambiosDatos.length})</summary><div className="timeline">{workflow.cambiosDatos.map((item) => <p key={item.id}><strong>{({ruc:'RUC',razonSocial:'Razón social',personaContacto:'Persona de contacto',telefonos:'Teléfonos',email:'Correo',direccion:'Dirección',departamento:'Departamento',distrito:'Distrito',actividadPrincipal:'Actividad principal',filtro_1:configuration.filters[0] || 'Filtro'} as Record<string, string>)[item.field] || item.field}</strong>: «{item.old_value || '—'}» → «{item.new_value || '—'}» · {item.changed_by_name || item.changed_by_role} · {new Date(item.created_at).toLocaleString('es-PE')}</p>)}</div></details> : null}
       <details className="history-panel"><summary>Ver trazabilidad ({workflow?.historial.length || 0} cambios)</summary><div className="timeline">{workflow?.historial.map((item) => <p key={item.id}><strong>{item.transition_code.split('_').join(' ')}</strong> · {item.to_substatus.split('_').join(' ')} · {new Date(item.created_at).toLocaleString('es-PE')}</p>)}</div></details>
     </section>
     </div>

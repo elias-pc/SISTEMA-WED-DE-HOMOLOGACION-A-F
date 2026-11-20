@@ -43,6 +43,8 @@ export interface TransicionDisponible { codigo: string; etiqueta: string; datosO
 export interface CatalogoEstadoOpcion { label: string; substatus: string; transitionCodes: string[]; automatic?: boolean }
 export interface CatalogoEstadoGrupo { status: EstadoFlujoProveedor; label: string; substatuses: CatalogoEstadoOpcion[] }
 
+export interface CambioDatoProveedor { id: string; field: string; old_value: string | null; new_value: string | null; changed_by_role: string; changed_by_name?: string | null; created_at: string }
+
 export interface HistorialFlujo {
   id: string;
   transition_code: string;

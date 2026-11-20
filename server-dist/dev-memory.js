@@ -391,9 +391,47 @@ memoryRouter.post('/assignments/unassign', requireUser, (request, response) => {
     response.json({ unassigned, unchanged: ids.length - unassigned });
 });
 memoryRouter.patch('/providers/:id/status', requireUser, (_request, response) => response.status(410).json({ error: 'El cambio libre de estado fue retirado. Utiliza una transición válida del flujo.' }));
+// Corrección de datos del proveedor (modo demo): misma regla que el servidor real.
+const memoryDataChanges = new Map();
+memoryRouter.patch('/providers/:id', requireUser, (request, response) => {
+    const user = response.locals.user, provider = providers.find(item => item.id === request.params.id);
+    if (!['administradora', 'ejecutiva'].includes(user.role))
+        return response.status(403).json({ error: 'No tienes permiso para realizar esta acción.' });
+    if (!provider)
+        return response.status(404).json({ error: 'Proveedor no encontrado.' });
+    if (!canSeeProvider(user, provider))
+        return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' });
+    const body = request.body || {};
+    if (user.role !== 'administradora' && (body.ruc !== undefined || body.razonSocial !== undefined))
+        return response.status(403).json({ error: 'Solo el administrador puede cambiar el RUC o la razón social.' });
+    if (body.ruc !== undefined && !/^\d{11}$/.test(String(body.ruc)))
+        return response.status(400).json({ error: 'El RUC debe tener 11 dígitos.' });
+    if (body.email !== undefined && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(body.email)))
+        return response.status(400).json({ error: 'Correo electrónico no válido.' });
+    const fields = ['personaContacto', 'telefonos', 'email', 'direccion', 'departamento', 'distrito', 'actividadPrincipal', ...(user.role === 'administradora' ? ['ruc', 'razonSocial'] : [])];
+    const log = memoryDataChanges.get(String(provider.id)) || [];
+    for (const field of fields) {
+        const value = body[field];
+        if (typeof value === 'string' && value.trim() && value.trim() !== String(provider[field] ?? '')) {
+            log.unshift({ id: randomUUID(), field, old_value: provider[field] ?? null, new_value: value.trim(), changed_by_role: user.role, changed_by_name: user.name, created_at: new Date().toISOString() });
+            provider[field] = value.trim();
+        }
+    }
+    for (const [key, value] of Object.entries((body.atributos || {}))) {
+        if (!/^filtro_\d$/.test(key))
+            continue;
+        const before = provider.atributos?.[key] ?? '';
+        if (String(value).trim() !== before) {
+            log.unshift({ id: randomUUID(), field: key, old_value: before || null, new_value: String(value).trim(), changed_by_role: user.role, changed_by_name: user.name, created_at: new Date().toISOString() });
+            provider.atributos = { ...(provider.atributos || {}), [key]: String(value).trim() };
+        }
+    }
+    memoryDataChanges.set(String(provider.id), log);
+    response.json({ provider, cambios: log.length });
+});
 memoryRouter.get('/providers/:id/workflow', requireUser, (request, response) => { const user = response.locals.user, provider = providers.find(item => item.id === request.params.id); if (!provider)
     return response.status(404).json({ error: 'Proveedor no encontrado.' }); if (!canSeeProvider(user, provider))
-    return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' }); response.json({ provider, transicionesDisponibles: memoryTransitions(provider, user), catalogoEstados: statusCatalog, historial: workflowHistory.get(provider.id) || [] }); });
+    return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' }); response.json({ provider, transicionesDisponibles: memoryTransitions(provider, user), catalogoEstados: statusCatalog, historial: workflowHistory.get(provider.id) || [], cambiosDatos: memoryDataChanges.get(String(provider.id)) || [] }); });
 memoryRouter.get('/providers/:id/dossier', requireUser, (request, response) => { const user = response.locals.user, provider = providers.find(item => item.id === request.params.id); if (!provider)
     return response.status(404).json({ error: 'Proveedor no encontrado.' }); if (!canSeeProvider(user, provider))
     return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' }); response.json(dossier(provider.id)); });
