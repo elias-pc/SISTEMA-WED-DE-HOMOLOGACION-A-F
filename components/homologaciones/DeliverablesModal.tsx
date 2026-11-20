@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { uploadProviderDocument } from '../../services/documentUpload';
 import type { DocumentoEntregable } from '../../types';
 
 interface Props {
@@ -6,6 +7,9 @@ interface Props {
   providerName: string;
   providerRuc?: string;
   documents: DocumentoEntregable[];
+  /** Solo las ejecutivas suben entregables; el resto solo ve y descarga. */
+  canUpload?: boolean;
+  onUploaded?: () => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -26,10 +30,27 @@ function fileKind(document: DocumentoEntregable) {
   return { label: (extension || 'DOC').slice(0, 4).toUpperCase(), name: 'Documento', color: '#475569' };
 }
 
-function DeliverablesModal({ providerId, providerName, providerRuc, documents, onClose }: Props) {
+function DeliverablesModal({ providerId, providerName, providerRuc, documents, canUpload = false, onUploaded, onClose }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(documents[0]?.id ?? null);
   const [message, setMessage] = useState('');
-  const selected = useMemo(() => documents.find((document) => document.id === selectedId) ?? null, [documents, selectedId]);
+  const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const selected = useMemo(() => documents.find((document) => document.id === selectedId) ?? documents[0] ?? null, [documents, selectedId]);
+
+  const uploadFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setUploading(true); setError(''); setMessage('');
+    try {
+      await uploadProviderDocument(providerId, file, 'Entregable');
+      await onUploaded?.();
+      setSelectedId(null);
+      setMessage(`Entregable «${file.name}» subido correctamente.`);
+    } catch (uploadError) { setError(uploadError instanceof Error ? uploadError.message : 'No se pudo subir el entregable.'); }
+    finally { setUploading(false); }
+  };
 
   useEffect(() => {
     const closeWithEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
@@ -49,7 +70,7 @@ function DeliverablesModal({ providerId, providerName, providerRuc, documents, o
   };
 
   const renderPreview = () => {
-    if (!selected) return <p className="document-preview-empty">Selecciona un documento de la lista para verlo aquí.</p>;
+    if (!selected) return <p className="document-preview-empty">{canUpload ? 'Todavía no hay entregables. Usa «Subir entregable» para cargar el primero.' : 'Todavía no hay entregables para este proveedor.'}</p>;
     const url = documentUrl(providerId, selected.id);
     if (selected.mimeType.startsWith('image/')) return <img className="deliverable-preview-image" src={url} alt={`Vista previa de ${selected.originalName}`} />;
     if (selected.mimeType === 'application/pdf' || selected.mimeType.startsWith('text/')) return <iframe key={selected.id} className="deliverable-preview-frame" src={url} title={`Vista previa de ${selected.originalName}`} />;
@@ -65,6 +86,7 @@ function DeliverablesModal({ providerId, providerName, providerRuc, documents, o
         </header>
         <div className="deliverables-modal-content">
           <aside className="deliverables-list" aria-label="Documentos disponibles">
+            {canUpload ? <><button type="button" className="btn-primary" onClick={() => fileInput.current?.click()} disabled={uploading} style={{ width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '.5rem', marginBottom: '.8rem' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21V9" /><path d="m7 14 5-5 5 5" /><path d="M5 3h14" /></svg>{uploading ? 'Subiendo…' : 'Subir entregable'}</button><input ref={fileInput} type="file" className="visually-hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx" onChange={uploadFile} aria-label="Seleccionar entregable" /></> : null}
             <p style={{ margin: '0 0 .4rem', color: 'var(--color-text-muted)', fontSize: '.75rem', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase' }}>Documentos disponibles ({documents.length})</p>
             {documents.map((document) => {
               const kind = fileKind(document);
@@ -101,7 +123,7 @@ function DeliverablesModal({ providerId, providerName, providerRuc, documents, o
           </div>
         </div>
         <footer className="deliverables-modal-footer">
-          <p role="status">{message}</p>
+          <p role="status" style={error ? { color: '#b91c1c' } : undefined}>{error || message}</p>
           <div><button type="button" className="btn-secondary" onClick={onClose}>Cerrar</button></div>
         </footer>
       </section>

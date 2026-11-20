@@ -17,12 +17,14 @@ interface Props {
 function ProviderStatusTable({ processId, processCode, filterLabels, companyId, configuration }: Props) {
   const { user } = useAuth();
   const canChangeStatus = Boolean(user && user.role !== 'cliente');
+  const canUploadDeliverables = user?.role === 'ejecutiva';
   const [statusTarget, setStatusTarget] = useState<{ row: EstadoProveedorReporte; anchor: { x: number; y: number } } | null>(null);
   const [allRows, setRows] = useState<EstadoProveedorReporte[]>([]);
   const [search, setSearch] = useState('');
   const [searchField, setSearchField] = useState('');
   const [selectedOptional, setSelectedOptional] = useState<StatusColumnKey[]>([...optionalStatusColumnKeys]);
-  const [selectedProvider, setSelectedProvider] = useState<EstadoProveedorReporte | null>(null);
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+  const selectedProvider = useMemo(() => allRows.find((row) => row.id === selectedProviderId) ?? null, [allRows, selectedProviderId]);
   const [filterOpen, setFilterOpen] = useState(false);
   const filterControlRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
@@ -106,11 +108,11 @@ function ProviderStatusTable({ processId, processCode, filterLabels, companyId, 
           <table className="status-detail-table">
             <colgroup>{columns.map((column) => <col key={column.key} className={`status-column-${column.key}`} />)}</colgroup>
             <thead><tr>{columns.map((column) => <th key={column.key} className={column.fixed ? `sticky-column sticky-${column.key}` : ''}>{column.label}</th>)}</tr></thead>
-            <tbody>{rows.map((row, rowIndex) => <tr key={row.id}>{columns.map((column) => <td key={column.key} className={column.fixed ? `sticky-column sticky-${column.key}` : ''}>{column.key === 'entregables' ? row.documentosEntregables.length ? <button type="button" className="deliverables-button" onClick={() => setSelectedProvider(row)}>Ver entregables ({row.documentosEntregables.length})</button> : <span className="empty-deliverables">Sin archivos</span> : (column.key === 'estado' || column.key === 'subestado') && canChangeStatus ? <button type="button" className="status-cell-button" title="Cambiar status del proveedor" onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setStatusTarget({ row, anchor: { x: rect.left, y: rect.bottom } }); }}>{formatStatusValue(rawStatusValue(row, column, rowIndex), column)}</button> : formatStatusValue(rawStatusValue(row, column, rowIndex), column)}</td>)}</tr>)}</tbody>
+            <tbody>{rows.map((row, rowIndex) => <tr key={row.id}>{columns.map((column) => <td key={column.key} className={column.fixed ? `sticky-column sticky-${column.key}` : ''}>{column.key === 'entregables' ? row.documentosEntregables.length || canUploadDeliverables ? <button type="button" className="deliverables-button" onClick={() => setSelectedProviderId(row.id)}>Entregables{row.documentosEntregables.length ? ` (${row.documentosEntregables.length})` : ''}</button> : <span className="empty-deliverables">Sin archivos</span> : (column.key === 'estado' || column.key === 'subestado') && canChangeStatus ? <button type="button" className="status-cell-button" title="Cambiar status del proveedor" onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setStatusTarget({ row, anchor: { x: rect.left, y: rect.bottom } }); }}>{formatStatusValue(rawStatusValue(row, column, rowIndex), column)}</button> : formatStatusValue(rawStatusValue(row, column, rowIndex), column)}</td>)}</tr>)}</tbody>
           </table>
         </div>
       ) : <p className="empty-status">Todavía no hay proveedores registrados en este proceso.</p>}
-      {selectedProvider ? <DeliverablesModal key={selectedProvider.id} providerId={selectedProvider.id} providerName={selectedProvider.razonSocial} providerRuc={selectedProvider.ruc} documents={selectedProvider.documentosEntregables} onClose={() => setSelectedProvider(null)} /> : null}
+      {selectedProvider ? <DeliverablesModal key={selectedProvider.id} providerId={selectedProvider.id} providerName={selectedProvider.razonSocial} providerRuc={selectedProvider.ruc} documents={selectedProvider.documentosEntregables} canUpload={canUploadDeliverables} onUploaded={loadRows} onClose={() => setSelectedProviderId(null)} /> : null}
       {statusTarget ? <StatusChangePopover key={statusTarget.row.id} providerId={statusTarget.row.id} providerName={statusTarget.row.razonSocial} anchor={statusTarget.anchor} companyId={companyId} configuration={configuration} onClose={() => setStatusTarget(null)} onChanged={() => { void loadRows().then(() => setMessage('Status actualizado correctamente.')); }} /> : null}
     </section>
   );

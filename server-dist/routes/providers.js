@@ -196,7 +196,8 @@ providersRouter.get('/my-portfolio', requireRoles('ejecutiva'), async (request, 
 const documentSchema = documentMetadataSchema.extend({ contentBase64: z.string().min(4) });
 const documentUploadSchema = documentMetadataSchema.extend({ byteSize: z.number().int().min(1).max(5 * 1024 * 1024) });
 const documentCompleteSchema = documentMetadataSchema.extend({ documentId: z.string().uuid(), storageKey: z.string().min(1).max(500) });
-providersRouter.post('/:id/documents', validateBody(documentSchema), async (request, response) => {
+// Subir entregables es exclusivo de las ejecutivas (desde Status de proveedores); los demás roles solo ven y descargan.
+providersRouter.post('/:id/documents', requireRoles('ejecutiva'), validateBody(documentSchema), async (request, response) => {
     const user = request.user;
     const found = await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`, [request.params.id]);
     if (!found.rowCount)
@@ -214,7 +215,7 @@ providersRouter.post('/:id/documents', validateBody(documentSchema), async (requ
         response.status(422).json({ error: error instanceof Error ? error.message : 'No se pudo registrar el documento.' });
     }
 });
-providersRouter.post('/:id/documents/upload-url', validateBody(documentUploadSchema), async (request, response) => {
+providersRouter.post('/:id/documents/upload-url', requireRoles('ejecutiva'), validateBody(documentUploadSchema), async (request, response) => {
     const user = request.user;
     const found = await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`, [request.params.id]);
     if (!found.rowCount)
@@ -232,7 +233,7 @@ providersRouter.post('/:id/documents/upload-url', validateBody(documentUploadSch
         response.status(422).json({ error: error instanceof Error ? error.message : 'No se pudo preparar la carga del documento.' });
     }
 });
-providersRouter.post('/:id/documents/complete', validateBody(documentCompleteSchema), async (request, response) => {
+providersRouter.post('/:id/documents/complete', requireRoles('ejecutiva'), validateBody(documentCompleteSchema), async (request, response) => {
     const user = request.user;
     const found = await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`, [request.params.id]);
     if (!found.rowCount)

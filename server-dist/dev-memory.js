@@ -400,7 +400,8 @@ memoryRouter.get('/providers/:id/dossier', requireUser, (request, response) => {
 memoryRouter.put('/providers/:id/contact-preferences', requireUser, (request, response) => { const user = response.locals.user, provider = providers.find(item => item.id === request.params.id); if (!provider)
     return response.status(404).json({ error: 'Proveedor no encontrado.' }); if (!['administradora', 'ejecutiva'].includes(user.role) || !canSeeProvider(user, provider))
     return response.status(403).json({ error: 'No tienes permiso.' }); const preferences = { provider_id: provider.id, whatsapp_phone: request.body.whatsappPhone || null, whatsapp_opt_in: Boolean(request.body.whatsappOptIn), whatsapp_opt_in_at: request.body.whatsappOptIn ? new Date().toISOString() : null, whatsapp_opt_in_source: request.body.whatsappOptInSource || null, updated_at: new Date().toISOString() }; dossier(provider.id).contactPreferences = preferences; response.json({ contactPreferences: preferences }); });
-memoryRouter.post('/providers/:id/documents', requireUser, async (request, response) => { const user = response.locals.user, provider = providers.find(item => item.id === request.params.id); if (!provider)
+memoryRouter.post('/providers/:id/documents', requireUser, async (request, response) => { if (response.locals.user.role !== 'ejecutiva')
+    return response.status(403).json({ error: 'Solo las ejecutivas pueden subir entregables.' }); const user = response.locals.user, provider = providers.find(item => item.id === request.params.id); if (!provider)
     return response.status(404).json({ error: 'Proveedor no encontrado.' }); if (!canSeeProvider(user, provider))
     return response.status(403).json({ error: 'Proveedor fuera de tu alcance.' }); try {
     const saved = await storeLocalDocument(provider.id, String(request.body.originalName || ''), String(request.body.contentBase64 || ''));

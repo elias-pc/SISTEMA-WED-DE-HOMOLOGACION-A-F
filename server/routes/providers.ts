@@ -180,7 +180,8 @@ const documentSchema=documentMetadataSchema.extend({contentBase64:z.string().min
 const documentUploadSchema=documentMetadataSchema.extend({byteSize:z.number().int().min(1).max(5*1024*1024)});
 const documentCompleteSchema=documentMetadataSchema.extend({documentId:z.string().uuid(),storageKey:z.string().min(1).max(500)});
 
-providersRouter.post('/:id/documents',validateBody(documentSchema),async(request,response)=>{
+// Subir entregables es exclusivo de las ejecutivas (desde Status de proveedores); los demás roles solo ven y descargan.
+providersRouter.post('/:id/documents',requireRoles('ejecutiva'),validateBody(documentSchema),async(request,response)=>{
  const user=(request as unknown as AuthenticatedRequest).user;
  const found=await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`,[request.params.id]);
  if(!found.rowCount)return response.status(404).json({error:'Proveedor no encontrado.'});
@@ -197,7 +198,7 @@ providersRouter.post('/:id/documents',validateBody(documentSchema),async(request
  }
 });
 
-providersRouter.post('/:id/documents/upload-url',validateBody(documentUploadSchema),async(request,response)=>{
+providersRouter.post('/:id/documents/upload-url',requireRoles('ejecutiva'),validateBody(documentUploadSchema),async(request,response)=>{
  const user=(request as unknown as AuthenticatedRequest).user;
  const found=await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`,[request.params.id]);
  if(!found.rowCount)return response.status(404).json({error:'Proveedor no encontrado.'});
@@ -210,7 +211,7 @@ providersRouter.post('/:id/documents/upload-url',validateBody(documentUploadSche
  } catch(error) { response.status(422).json({error:error instanceof Error?error.message:'No se pudo preparar la carga del documento.'}); }
 });
 
-providersRouter.post('/:id/documents/complete',validateBody(documentCompleteSchema),async(request,response)=>{
+providersRouter.post('/:id/documents/complete',requireRoles('ejecutiva'),validateBody(documentCompleteSchema),async(request,response)=>{
  const user=(request as unknown as AuthenticatedRequest).user;
  const found=await pool.query(`SELECT p.*,h.executive_id FROM providers p JOIN homologation_processes h ON h.id=p.process_id WHERE p.id=$1`,[request.params.id]);
  if(!found.rowCount)return response.status(404).json({error:'Proveedor no encontrado.'});
