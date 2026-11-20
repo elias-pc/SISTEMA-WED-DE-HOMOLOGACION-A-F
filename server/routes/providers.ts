@@ -48,7 +48,7 @@ function publicTransition(transition:ReturnType<typeof availableTransitions>[num
  return {codigo:transition.code,etiqueta:transition.label,datosObligatorios:[...(transition.requiredFields||[])],estadoDestino:transition.to.status,subestadoDestino:transition.to.substatus};
 }
 
-const createSchema=z.object({id:z.string().optional(),empresaId:z.string().min(1),procesoId:z.string().min(1),razonSocial:z.string().min(2).max(180),ruc:z.string().regex(/^\d{11}$/),personaContacto:z.string().min(2).max(120),telefonos:z.string().min(6).max(80),email:z.string().email(),direccion:z.string().min(3).max(240),departamento:z.string().min(2).max(80),distrito:z.string().min(2).max(80),actividadPrincipal:z.string().min(2).max(240),atributos:z.record(z.string().min(1).max(80),z.string().trim().max(180)).default({})});
+const createSchema=z.object({id:z.string().optional(),empresaId:z.string().min(1),procesoId:z.string().min(1),razonSocial:z.string().min(2).max(180),ruc:z.string().regex(/^\d{11}$/),personaContacto:z.string().trim().max(120).default(''),telefonos:z.string().trim().max(80).default(''),email:z.union([z.literal(''),z.string().trim().email('Correo electrónico no válido.').max(160)]).default(''),direccion:z.string().trim().max(240).default(''),departamento:z.string().trim().max(80).default(''),distrito:z.string().trim().max(80).default(''),actividadPrincipal:z.string().trim().max(240).default(''),atributos:z.record(z.string().min(1).max(80),z.string().trim().max(180)).default({})});
 providersRouter.post('/',requireRoles('administradora'),validateBody(createSchema),async(request,response)=>{
  const user=(request as AuthenticatedRequest).user,b=request.body;
  const process=await pool.query('SELECT company_id,executive_id FROM homologation_processes WHERE id=$1',[b.procesoId]);
@@ -67,13 +67,13 @@ const editableAdminFields={ruc:'tax_id',razonSocial:'legal_name'} as const;
 const updateProviderSchema=z.object({
  ruc:z.string().trim().regex(/^\d{11}$/,'El RUC debe tener 11 dígitos.').optional(),
  razonSocial:z.string().trim().min(2).max(200).optional(),
- personaContacto:z.string().trim().min(2).max(160).optional(),
- telefonos:z.string().trim().min(3).max(120).optional(),
- email:z.string().trim().email('Correo electrónico no válido.').max(160).optional(),
- direccion:z.string().trim().min(2).max(240).optional(),
- departamento:z.string().trim().min(2).max(80).optional(),
- distrito:z.string().trim().min(2).max(80).optional(),
- actividadPrincipal:z.string().trim().min(2).max(200).optional(),
+ personaContacto:z.string().trim().max(160).optional(),
+ telefonos:z.string().trim().max(120).optional(),
+ email:z.union([z.literal(''),z.string().trim().email('Correo electrónico no válido.').max(160)]).optional(),
+ direccion:z.string().trim().max(240).optional(),
+ departamento:z.string().trim().max(80).optional(),
+ distrito:z.string().trim().max(80).optional(),
+ actividadPrincipal:z.string().trim().max(200).optional(),
  atributos:z.record(z.string().regex(/^filtro_\d$/),z.string().trim().max(120)).optional(),
 }).strict();
 providersRouter.patch('/:id',requireRoles('administradora','ejecutiva'),validateBody(updateProviderSchema),async(request,response)=>{

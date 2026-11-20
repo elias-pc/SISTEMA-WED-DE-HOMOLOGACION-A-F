@@ -88,7 +88,7 @@ function ProveedoresPage() {
           <form className="provider-form" onSubmit={handleSubmit}>
             <h3>Datos del nuevo proveedor</h3>
             {Object.entries({ ruc: 'RUC', razonSocial: 'Razón social', personaContacto: 'Persona de contacto', telefonos: 'Teléfono', email: 'Correo electrónico', direccion: 'Dirección', departamento: 'Departamento', distrito: 'Distrito', actividadPrincipal: 'Actividad principal' }).map(([field, label]) => (
-              <label key={field}>{label}<input type={field === 'email' ? 'email' : 'text'} inputMode={field === 'ruc' ? 'numeric' : undefined} minLength={field === 'ruc' ? 11 : undefined} maxLength={field === 'ruc' ? 11 : undefined} value={form[field as keyof typeof form]} onChange={(event) => setField(field as keyof typeof emptyForm, event.target.value)} required /></label>
+              <label key={field}>{label}<input type={field === 'email' ? 'email' : 'text'} inputMode={field === 'ruc' ? 'numeric' : undefined} minLength={field === 'ruc' ? 11 : undefined} maxLength={field === 'ruc' ? 11 : undefined} value={form[field as keyof typeof form]} onChange={(event) => setField(field as keyof typeof emptyForm, event.target.value)} required={field === 'ruc' || field === 'razonSocial'} /></label>
             ))}
             {selectedEmpresa?.configuracionHomologacion.filters.map((label, index) => (
               <label key={label}>{label}<input type="text" value={attributes[`filtro_${index + 1}`] || ''} onChange={(event) => setAttributes((current) => ({ ...current, [`filtro_${index + 1}`]: event.target.value }))} /></label>

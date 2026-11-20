@@ -10,7 +10,9 @@ const aliases = {
     distrito: ['distrito'],
     actividadPrincipal: ['actividad principal', 'actividad'],
 };
-const required = Object.keys(aliases);
+const fields = Object.keys(aliases);
+// Solo el RUC y la razón social son obligatorios: la ejecutiva completa los demás datos después.
+const required = ['ruc', 'razonSocial'];
 const normalize = (value) => String(value ?? '').trim();
 const normalizeKey = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 function valueFor(raw, key) {
@@ -32,11 +34,12 @@ export function parseProviderWorkbook(contentBase64, filterLabels = []) {
     const seenRucs = new Set();
     const parsed = rows.map((source, index) => {
         const raw = Object.fromEntries(Object.entries(source).map(([key, value]) => [key, normalize(value)]));
-        const values = Object.fromEntries(required.map((key) => [key, valueFor(raw, key)]));
+        const values = Object.fromEntries(fields.map((key) => [key, valueFor(raw, key)]));
         const errors = [];
+        const requiredLabels = { ruc: 'el RUC', razonSocial: 'la razón social' };
         for (const field of required)
             if (!values[field])
-                errors.push(`Falta ${field}.`);
+                errors.push(`Falta ${requiredLabels[field] || field}.`);
         if (values.ruc && !/^\d{11}$/.test(values.ruc))
             errors.push('El RUC debe tener 11 dígitos.');
         if (values.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email))

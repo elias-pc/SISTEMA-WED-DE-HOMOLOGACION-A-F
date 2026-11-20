@@ -54,7 +54,7 @@ function ProviderDataEditor({ provider, filterLabel, canEditIdentity, onSaved, o
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '.8rem' }}>
         <label>RUC<input id="editar-prov-ruc" value={values.ruc} onChange={(event) => set('ruc', event.target.value)} inputMode="numeric" minLength={11} maxLength={11} pattern="\d{11}" required disabled={!canEditIdentity} style={canEditIdentity ? undefined : lockedStyle} title={canEditIdentity ? undefined : 'Solo el administrador puede cambiarlo'} /></label>
         <label>Razón social<input id="editar-prov-razon" value={values.razonSocial} onChange={(event) => set('razonSocial', event.target.value)} minLength={2} required disabled={!canEditIdentity} style={canEditIdentity ? undefined : lockedStyle} title={canEditIdentity ? undefined : 'Solo el administrador puede cambiarlo'} /></label>
-        {contactFields.map(({ key, label, type }) => <label key={key}>{label}<input id={`editar-prov-${key}`} type={type || 'text'} value={values[key]} onChange={(event) => set(key, event.target.value)} minLength={2} required /></label>)}
+        {contactFields.map(({ key, label, type }) => <label key={key}>{label}<input id={`editar-prov-${key}`} type={type || 'text'} value={values[key]} onChange={(event) => set(key, event.target.value)} /></label>)}
         <label>{filterLabel}<input id="editar-prov-filtro" value={values.filtro_1} onChange={(event) => set('filtro_1', event.target.value)} /></label>
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.6rem' }}>

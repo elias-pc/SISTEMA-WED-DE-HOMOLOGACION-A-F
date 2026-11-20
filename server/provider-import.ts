@@ -30,7 +30,9 @@ const aliases: Record<string, string[]> = {
   actividadPrincipal: ['actividad principal', 'actividad'],
 };
 
-const required = Object.keys(aliases) as Array<keyof typeof aliases>;
+const fields = Object.keys(aliases) as Array<keyof typeof aliases>;
+// Solo el RUC y la razón social son obligatorios: la ejecutiva completa los demás datos después.
+const required: Array<keyof typeof aliases> = ['ruc', 'razonSocial'];
 const normalize = (value: unknown) => String(value ?? '').trim();
 const normalizeKey = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
@@ -51,9 +53,10 @@ export function parseProviderWorkbook(contentBase64: string, filterLabels: strin
   const seenRucs = new Set<string>();
   const parsed = rows.map((source, index) => {
     const raw = Object.fromEntries(Object.entries(source).map(([key, value]) => [key, normalize(value)]));
-    const values = Object.fromEntries(required.map((key) => [key, valueFor(raw, key)])) as Record<keyof typeof aliases, string>;
+    const values = Object.fromEntries(fields.map((key) => [key, valueFor(raw, key)])) as Record<keyof typeof aliases, string>;
     const errors: string[] = [];
-    for (const field of required) if (!values[field]) errors.push(`Falta ${field}.`);
+    const requiredLabels: Record<string, string> = { ruc: 'el RUC', razonSocial: 'la razón social' };
+    for (const field of required) if (!values[field]) errors.push(`Falta ${requiredLabels[field] || field}.`);
     if (values.ruc && !/^\d{11}$/.test(values.ruc)) errors.push('El RUC debe tener 11 dígitos.');
     if (values.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) errors.push('El correo electrónico no es válido.');
     if (values.ruc) {

@@ -22,6 +22,7 @@ describe('importación de proveedores desde Excel', () => {
       { RUC: '20987654321', 'Razón Social': 'Dos', Contacto: '', Teléfono: '999888777', Correo: 'incorrecto', Dirección: 'Av. Dos 1', Departamento: 'Lima', Distrito: 'Lima', 'Actividad Principal': 'Servicios' },
     ]));
     expect(rows[0].errors).toContain('El RUC está duplicado dentro del archivo.');
-    expect(rows[1].errors).toEqual(expect.arrayContaining(['Falta personaContacto.', 'El correo electrónico no es válido.']));
+    expect(rows[1].errors).toEqual(expect.arrayContaining(['El correo electrónico no es válido.']));
+    expect(rows[1].errors.join(' ')).not.toMatch(/persona|contacto/i);
   });
 });
