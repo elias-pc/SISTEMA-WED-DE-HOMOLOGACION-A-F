@@ -86,7 +86,6 @@ function DeliverablesModal({ providerId, providerName, providerRuc, documents, c
         </header>
         <div className="deliverables-modal-content">
           <aside className="deliverables-list" aria-label="Documentos disponibles">
-            {canUpload ? <><button type="button" className="btn-primary" onClick={() => fileInput.current?.click()} disabled={uploading} style={{ width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '.5rem', marginBottom: '.8rem' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21V9" /><path d="m7 14 5-5 5 5" /><path d="M5 3h14" /></svg>{uploading ? 'Subiendo…' : 'Subir entregable'}</button><input ref={fileInput} type="file" className="visually-hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx" onChange={uploadFile} aria-label="Seleccionar entregable" /></> : null}
             <p style={{ margin: '0 0 .4rem', color: 'var(--color-text-muted)', fontSize: '.75rem', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase' }}>Documentos disponibles ({documents.length})</p>
             {documents.map((document) => {
               const kind = fileKind(document);
@@ -114,10 +113,13 @@ function DeliverablesModal({ providerId, providerName, providerRuc, documents, c
                 <span style={{ color: 'var(--color-text-muted)', fontSize: '.75rem' }}>Vista previa</span>
                 <strong style={{ overflowWrap: 'anywhere', fontSize: '.9rem' }}>{selected?.originalName || 'Ningún documento seleccionado'}</strong>
               </div>
+              <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
+              {canUpload ? <><button type="button" className="btn-primary" onClick={() => fileInput.current?.click()} disabled={uploading} style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', whiteSpace: 'nowrap' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21V9" /><path d="m7 14 5-5 5 5" /><path d="M5 3h14" /></svg>{uploading ? 'Subiendo…' : 'Subir entregable'}</button><input ref={fileInput} type="file" className="visually-hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx" onChange={uploadFile} aria-label="Seleccionar entregable" /></> : null}
               <button type="button" className="btn-primary" onClick={downloadSelected} disabled={!selected} style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', whiteSpace: 'nowrap' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
                 Descargar documento
               </button>
+              </div>
             </div>
             <div className="deliverable-preview" aria-live="polite">{renderPreview()}</div>
           </div>
