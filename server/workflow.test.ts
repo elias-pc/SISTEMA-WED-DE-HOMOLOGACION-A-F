@@ -67,10 +67,12 @@ describe('motor formal de homologación', () => {
     expect(validateTransition(initialProviderWorkflowState, 'ASIGNAR_EJECUTIVA', 'administradora', { ejecutivaId: 'eje-decal' }).ok).toBe(true);
   });
 
-  it('permite que la administradora ejecute las transiciones operativas sin saltarse el flujo', () => {
+  it('permite que la administradora ejecute las transiciones operativas sin saltarse el flujo, salvo asignar inspector', () => {
     const state = { step: 6, status: 'INSCRITO', substatus: 'FORMULARIO_DEVUELTO' } as const;
-    expect(availableTransitions(state, 'administradora').map((item) => item.code)).toEqual(['ASIGNAR_INSPECTOR']);
-    expect(validateTransition(state, 'ASIGNAR_INSPECTOR', 'administradora', { inspectorId: 'inspector-decal' }).ok).toBe(true);
+    expect(availableTransitions(state, 'administradora').map((item) => item.code)).toEqual([]);
+    expect(validateTransition(state, 'ASIGNAR_INSPECTOR', 'administradora', { inspectorId: 'inspector-decal' }).ok).toBe(false);
+    expect(validateTransition({ step: 7, status: 'INSCRITO', substatus: 'VISITA_DESESTIMADA' }, 'RETOMAR_VISITA', 'administradora', { inspectorId: 'inspector-decal', motivo: 'x' }).ok).toBe(false);
+    expect(validateTransition({ step: 7, status: 'INSCRITO', substatus: 'INSPECTOR_ASIGNADO' }, 'PROGRAMAR_VISITA', 'administradora', { fechaVisita: '2026-12-01', modalidadVisita: 'Presencial' }).ok).toBe(true);
     expect(validateTransition(initialProviderWorkflowState, 'REGISTRAR_PAGO', 'administradora', {}).ok).toBe(false);
     expect(validateTransition({ step: 9, status: 'HOMOLOGADO', substatus: 'VIGENTE' }, 'MARCAR_VENCIDO', 'administradora').ok).toBe(false);
   });

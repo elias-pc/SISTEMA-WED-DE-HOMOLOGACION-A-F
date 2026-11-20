@@ -144,7 +144,8 @@ export const statusCatalog: readonly StatusCatalogGroup[] = [
 ];
 
 export function workflowRolesForUserRole(role: UserRole): WorkflowActorRole[] {
-  if (role === 'administradora') return ['administradora', 'ejecutiva', 'jefe_inspecciones', 'inspector'];
+  // El administrador puede ejecutar el flujo operativo, salvo asignar o retomar visitas: eso es exclusivo del Jefe de inspectores.
+  if (role === 'administradora') return ['administradora', 'ejecutiva', 'inspector'];
   if (role === 'jefe_inspecciones') return ['jefe_inspecciones'];
   if (role === 'ejecutiva' || role === 'inspector') return [role];
   return [];
