@@ -78,14 +78,16 @@ describe('motor formal de homologación', () => {
   });
 });
 
-describe('asignación de inspector desde «Formulario enviado»', () => {
+describe('asignación de inspector solo después de la devolución del formulario', () => {
   const sent = { step: 5 as const, status: 'INSCRITO' as const, substatus: 'FORMULARIO_ENVIADO' as const };
-  it('el jefe de inspectores puede asignar apenas se envía el formulario', () => {
-    expect(availableTransitions(sent, 'jefe_inspecciones').map((item) => item.code)).toContain('ASIGNAR_INSPECTOR');
-    expect(validateTransition(sent, 'ASIGNAR_INSPECTOR', 'jefe_inspecciones', { inspectorId: 'inspector-decal' }).ok).toBe(true);
+  const returned = { step: 6 as const, status: 'INSCRITO' as const, substatus: 'FORMULARIO_DEVUELTO' as const };
+  it('el jefe de inspectores no puede asignar con el formulario solo enviado', () => {
+    expect(availableTransitions(sent, 'jefe_inspecciones').map((item) => item.code)).not.toContain('ASIGNAR_INSPECTOR');
+    expect(validateTransition(sent, 'ASIGNAR_INSPECTOR', 'jefe_inspecciones', { inspectorId: 'inspector-decal' }).ok).toBe(false);
   });
-  it('la ejecutiva no puede asignar inspector', () => {
-    expect(availableTransitions(sent, 'ejecutiva').map((item) => item.code)).not.toContain('ASIGNAR_INSPECTOR');
-    expect(validateTransition(sent, 'ASIGNAR_INSPECTOR', 'ejecutiva', { inspectorId: 'inspector-decal' }).ok).toBe(false);
+  it('el jefe asigna tras la devolución; la ejecutiva y el administrador no pueden', () => {
+    expect(validateTransition(returned, 'ASIGNAR_INSPECTOR', 'jefe_inspecciones', { inspectorId: 'inspector-decal' }).ok).toBe(true);
+    expect(validateTransition(returned, 'ASIGNAR_INSPECTOR', 'ejecutiva', { inspectorId: 'inspector-decal' }).ok).toBe(false);
+    expect(validateTransition(returned, 'ASIGNAR_INSPECTOR', 'administradora', { inspectorId: 'inspector-decal' }).ok).toBe(false);
   });
 });
